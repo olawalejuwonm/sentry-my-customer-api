@@ -1,5 +1,5 @@
 const UserModel = require("../models/store_admin");
-const CustomerModel = require("../models/customer");
+const StoreModel = require('../models/store');
 const { body } = require('express-validator/check');
 
 exports.validate = (method) => {
@@ -15,71 +15,58 @@ exports.validate = (method) => {
 exports.create = async (req, res) => {
   const { id, name, phone_number, store_id } = req.body;
   
-  UserModel.findById(id, (error, user) => {
-    if (error) {
-      return res.status(404).json({
-        status: false,
-        message: error.message,
-        error: {
-          code: 404,
-          message: error.message
-        }
-      }); 
-    }
+  const identifier = req.user.phone_number;
+  const { phone_number, email, name } = req.body;
 
-    let store;
-    try {
-      store = user.stores.id(store_id);
-    } catch (error) {
-      return res.status(400).json({
-        status: false,
-        message: error.message,
-        error: {
-          code: 400,
-          message: error.message
-        }
-      }); 
-    }
-
-    if (store === null) {
-      return res.status(404).json({
-        status: false,
-        message: "store not found",
-        error: {
-          code: 404,
-          message: "store not found"
-        }
-      }); 
-    }
-
-    const newCustomer = new CustomerModel({
-      name,
-      phone_number
-    });
-
-    store.customers.push(newCustomer);
-
-    newUser = user.save()
-      .then((user) => {
-        return res.status(201).json({
-          status: true,
-          message: "Customer Added",
+  //get current user's id and add a new customer to it
+    UserModel.findOne({ identifier }).then(user => {
+      if(user.stores.length == 0){
+        return res.status(403).json({
+          message: "please add a store before adding customers"
+        })
+      }
+      let store_name = req.body.store_name || req.params.store_name;
+      let wantedStore = user.stores.find((store) => store.store_name === store_name); // find the necessary store form user.stores
+  
+      let customerToReg = { phone_number, email, name }; // customer to register
+      let customerExists = wantedStore.customers.find((customer) => customer.phone_number == customerToReg.phone_number); //truthy if customer is registered
+  
+      if(!customerExists) { // if customer isn't registered
+        wantedStore.customers.push(customerToReg); //push to user.stores
+      } else {
+        return res.status(409).json({
+          sucess: false,
+          message: "Customer already registered", 
           data: {
-            customers: store.customers
+            statusCode: 409,
           }
-        }); 
+        })
+      }
+  
+      user.save().then((result) => {
+  
+        res.status(201).json({
+          success: true,
+          message: "Customer registration successful",
+          data: {
+              statusCode: 201,
+              customer: customerToReg
+          }
+        })
       })
-      .catch((error) => {
-        return res.status(404).json({
-          status: false,
-          message: error.message,
-          error: {
-            code: 404,
-            message: error.message
-          }
-        }); 
+  
+    })
+    .catch((err) => {
+      res.status(500).json({
+        success: false,
+        message: "Something went wrong while adding customer.",
+        data: {
+            statusCode: 500,
+            error: err
+        }
       });
-  })
+    })
+  
 };
 
 exports.getById = (req, res) => {

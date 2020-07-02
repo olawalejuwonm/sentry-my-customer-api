@@ -158,13 +158,15 @@
                 <li>Update store<strong> - /store/update/:store_id [PUT]</strong>
                 <h6>Params</h6>
                 <ul class="alert alert-primary">
-                    <li>Update locations</li>
+                    <li>shop_address</li>
+                    <li>store_name</li>
+                    <li>current_user</li>
                 </ul>
                 </li>
                 <li>Delete store<strong> - /store/delete/:store_id [DELETE]</strong>
                     <h6>Params</h6>
                     <ul class="alert alert-primary">
-                        <li>store_id</li>
+                        <li>current_user</li>
                     </ul>
                 </li>
                 <li>View all user's stores<strong> - /store/all/:current_user [GET]</strong>
@@ -249,6 +251,7 @@
                     <ul class="alert alert-primary">
                         <li>name</li>
                         <li>phone_number</li>
+                        <li>store_name</li>
                     </ul>
                 </li>
                 <li>Retrieve customer<strong> - /customer/:customer_id [POST]</strong>
