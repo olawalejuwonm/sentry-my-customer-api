@@ -1,4 +1,5 @@
 const UserModel = require("../models/store_admin");
+const CustomerModel = require("../models/customer");
 const { body } = require('express-validator/check');
 
 exports.validate = (method) => {
@@ -12,29 +13,73 @@ exports.validate = (method) => {
 }
 
 exports.create = async (req, res) => {
+  const { id, name, phone_number, store_id } = req.body;
   
-  const id = req.params.current_user
-  console.log(id)
-  //get current user's id and add a new customer to it
-  UserModel.findById(id).catch(err =>{
-    res.send(err)
-  }).then(user =>{
-    console.log(user)
-    if(user.stores == [] || user.stores.length == 0){
-      res.status(403).json({
-        message: "please add a store before adding customers"
-      })
+  UserModel.findById(id, (error, user) => {
+    if (error) {
+      return res.status(404).json({
+        status: false,
+        message: error.message,
+        error: {
+          code: 404,
+          message: error.message
+        }
+      }); 
     }
-  })
 
-  // res.status(201).json({
-  //   status: true,
-  //   message: "Customer was created",
-  //   data: {
-  //     statusCode: 201,
-  //     customer: user
-  //   },
-  // });
+    let store;
+    try {
+      store = user.stores.id(store_id);
+    } catch (error) {
+      return res.status(400).json({
+        status: false,
+        message: error.message,
+        error: {
+          code: 400,
+          message: error.message
+        }
+      }); 
+    }
+
+    if (store === null) {
+      return res.status(404).json({
+        status: false,
+        message: "store not found",
+        error: {
+          code: 404,
+          message: "store not found"
+        }
+      }); 
+    }
+
+    const newCustomer = new CustomerModel({
+      name,
+      phone_number
+    });
+
+    store.customers.push(newCustomer);
+
+    newUser = user.save()
+      .then((user) => {
+        return res.status(201).json({
+          status: true,
+          message: "Customer Added",
+          data: {
+            customers: store.customers
+          }
+        }); 
+      })
+      .catch((error) => {
+        return res.status(404).json({
+          status: false,
+          message: error.message,
+          error: {
+            code: 404,
+            message: error.message
+          }
+        }); 
+      });
+  })
 };
 
 exports.getById = (req, res) => {
@@ -145,37 +190,56 @@ exports.deleteById = (req, res) => {
   }
 };
 
-exports.getAll = async (req, res) => {
-  try {
-    let customers = await Customer.find().select("-__v").sort({
-      createdAt: -1,
-    });
-    if (!customers) {
-      res.status(404).json({
+exports.getAll = (req, res) => {
+  const { id, store_id } = req.body;
+
+  UserModel.findById(id, (error, user) => {
+    if (error) {
+      return res.status(404).json({
         status: false,
-        message: "Customers not found",
+        message: error.message,
         error: {
           code: 404,
-          message: "Customers not found"
+          message: error.message
         }
-      });
+      }); 
     }
 
-    res.status(200).json({
+    let store;
+    try {
+      store = user.stores.id(store_id)
+      
+    } catch (error) {
+      return res.status(400).json({
+        status: false,
+        message: error.message,
+        error: {
+          code: 400,
+          message: error.message
+        }
+      }); 
+    }
+
+
+    if (store === null) {
+      return res.status(404).json({
+        status: false,
+        message: "store not found",
+        error: {
+          code: 404,
+          message: "store not found"
+        }
+      }); 
+    }
+
+    return res.status(200).json({
       status: true,
-      message: "Customers",
+      message: "All customers",
       data: {
-        customers: customers
+        customers: store.customers
       }
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: false,
-      message: error.message,
-      error: {
-        code: 500,
-        message: error.message
-      }
-    });
-  }
+    }); 
+    
+  });
 };
+
