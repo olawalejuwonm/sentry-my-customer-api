@@ -12,9 +12,7 @@ exports.validate = (method) => {
     }
 }
 
-exports.create = async (req, res) => {
-  const { id, name, phone_number, store_id } = req.body;
-  
+exports.create = async (req, res) => {  
   const identifier = req.user.phone_number;
   const { phone_number, email, name } = req.body;
 
