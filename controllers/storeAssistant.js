@@ -208,7 +208,41 @@ exports.getSingleStoreAssistant = (req, res, next) => {
 
 //  Update Single Store Assistants.
 exports.updateSingleStoreAssistant = (req, res, next) => {
-    // TODO Update Store Assistants Functions Here...
+    const assistantID = req.params.assistant_id;
+    const id = req.user.phone_number;
+    const reqBody = req.body;
+    //  Querry the StoreAdmin table to get the recored that matches the given Store Admin identifier.
+    UserModel.findOne({identifier: id})
+        .then((user) => {
+            if(user) {
+                const adminIdentity = user.local.phone_number;
+                //  Querry the StoreAssistant table to get All the Assistants that matches the given dminIdentifier.
+                StoreAssistantModel.findOneAndUpdate(
+                    { admin_identity: adminIdentity, _id: assistantID },
+                    { $set: reqBody }
+                )
+                    .then((storeAssistant) => {
+                        return res.status(200).json({
+                            success: true,
+                            message: "Store assistant updated successfully.",
+                            data: {
+                                status: 200,
+                                message: "Store assistant updated successfully.",
+                            },
+                        });
+                    })
+                    .catch((error) => {
+                        res.status(500).json({
+                            Error: error,
+                        });
+                    });
+            }
+        })
+        .catch((error) => {
+            res.status(500).json({
+                Error: error,
+            });
+        });
 }
 
 
