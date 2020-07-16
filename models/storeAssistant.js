@@ -8,6 +8,7 @@ const storeAssistantSchema = new mongoose.Schema({
 	password: { type: String, default: "password" },
 	store_id: {type: String},
 	is_active: { type: Boolean, default: 1 },
+	api_token: { type: String },
 	user_role: { type: String, default: "store_assistant" }
 }, { timestamp: true });
 

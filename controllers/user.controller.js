@@ -131,7 +131,7 @@ exports.newStoreAdmin = (req, res) => {
 };
 
 // Add new StoreAssistant
-exports.newStoreAssistant = (req, res) => {
+exports.newStoreAssistant = async (req, res) => {
   const { name, email, password, phone_number, store_id } = req.body;
   const id = req.user.phone_number;
 
@@ -139,7 +139,7 @@ exports.newStoreAssistant = (req, res) => {
     name: name,
     phone_number: phone_number,
     email: email,
-    password: password
+    password: await bcrypt.hash(password, 10),
   };
 
   User.findOne({ identifier: id })
