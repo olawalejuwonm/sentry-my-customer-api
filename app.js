@@ -3,17 +3,16 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const expressValidator = require("express-validator");
 require("dotenv").config();
-const { MONGOLAB_URI, API_PORT, FB_CLIENT_ID, FB_CLIENT_SECRET } = process.env;
+const { MONGOLAB_URI, API_PORT } = process.env;
 const app = express();
 
 var cors = require("cors");
 const documentation = require("./routes/documentation");
-// const google = require("./routes/google");
+const google = require("./routes/google");
+const facebook = require("./routes/facebook");
 const customer = require("./routes/customer");
-//const phone_verification = require("./routes/verify-phone-number");
 const otp = require("./routes/otp");
 // const example = require("./routes/example");
-//const messagingAPI = require("./routes/messaging");
 const mongoose = require("mongoose");
 const transactions = require("./routes/transaction");
 const store = require("./routes/stores.js");
@@ -24,13 +23,11 @@ const complaintRouter = require("./routes/complaint");
 const docs = require("./routes/docs");
 const user = require("./routes/user");
 const reset = require("./routes/reset");
-const debt = require('./routes/debt_reminder');
-// const businessCards = require("./routes/businessCardRoute");
-// const phone_call_api = require("./controllers/phone_call_api");
+const debt = require("./routes/debt_reminder");
+const businessCards = require("./routes/businessCardRoute");
+const dashboard = require("./routes/dashboard");
 app.use(cors());
 app.use(expressValidator());
-const passport = require("passport");
-const Strategy = require("passport-facebook").Strategy;
 
 mongoose.Promise = global.Promise;
 
@@ -61,57 +58,36 @@ app.set("view engine", "ejs");
 app.get("/", (req, res) => {
   res.redirect("/docs");
 });
-
+//middleware to enable us to send otp and a success message at the same time without errors
+app.use(function (req, res, next) {
+  let _send = res.send;
+  let sent = false;
+  res.send = function (data) {
+    if (sent) return;
+    _send.bind(res)(data);
+    sent = true;
+  };
+  next();
+});
 app.use(documentation);
 app.use(customer);
-//app.use(phone_verification);
+//app.use(userDebt);
 app.use(otp);
 app.use(reset);
-//app.use(messagingAPI);
 app.use(emailAPI);
 app.use(transactions);
-// app.use(businessCards);
+app.use(businessCards);
 app.use(store);
+app.use(google);
+app.use(facebook);
 app.use(complaintRouter);
-// app.use(google);
 app.use(user);
 app.use(docs);
+app.use(dashboard);
 app.use("/register", register);
 
-// CONFIGURE FACEBOOK SIGNIN
-app.use(passport.initialize());
-
-passport.use(
-  new Strategy(
-    {
-      clientID: FB_CLIENT_ID,
-      clientSecret: FB_CLIENT_SECRET,
-      callbackURL: `http://localhost:${API_PORT}/login/fb_login`,
-      profileFields: [
-        "id",
-        "first_name",
-        "middle_name",
-        "last_name",
-        "displayName",
-      ],
-    },
-    function (accessToken, refreshToken, profile, cb) {
-      return cb(null, profile);
-    }
-  )
-);
-
-passport.serializeUser(function (user, cb) {
-  cb(null, user);
-});
-
-passport.deserializeUser(function (obj, cb) {
-  cb(null, obj);
-});
-
 app.use("/login", login);
-app.use(debt)
-// app.use(phone_call_api);
+app.use(debt);
 
 //This should be the last route else any after it won't work
 app.use("*", (req, res) => {
