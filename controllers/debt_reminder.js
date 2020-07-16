@@ -113,26 +113,22 @@ const africastalking = require("africastalking")({
 // // };
 
 // Find all transaction with stat
-exports.getAll = (req, res) => {
+exports.getAll = async (req, res) => {
   const identifier = req.user.phone_number;
-  let storeId = req.params.storeId;
   let allDebts = [];
 
   UserModel.findOne({ identifier })
     .then((user) => {
-      user.stores.forEach((store) => {
-        if (store._id == storeId) {
-          store.customers.forEach((customer) => {
-            customer.transactions.forEach((transaction) => {
-              if (
-                transaction.type.toLowerCase() == "debt" &&
-                transaction.status.toLowerCase() == "unpaid"
-              ) {
-                allDebts.push(transaction);
-              }
-            });
-          });
-        }
+      let firstStore = user.stores[0];
+      firstStore.customers.forEach((customer) => {
+        customer.transactions.forEach((transaction) => {
+          if (
+            transaction.type.toLowerCase() == "debt" &&
+            transaction.status.toLowerCase() == "unpaid"
+          ) {
+            allDebts.push(transaction);
+          }
+        });
       });
 
       return res.status(200).json({
