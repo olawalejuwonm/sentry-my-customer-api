@@ -113,7 +113,7 @@ const africastalking = require("africastalking")({
 // // };
 
 // Find all transaction with stat
-exports.getAll = async (req, res) => {
+exports.getAll = (req, res) => {
   const identifier = req.user.phone_number;
   let storeId = req.params.storeId;
   let allDebts = [];
