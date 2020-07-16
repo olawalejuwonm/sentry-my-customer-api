@@ -8,6 +8,7 @@ const transactionSchema = new mongoose.Schema(
     total_amount: { type: String },
     description: { type: String, default: "Not set" },
     assistant_inCharge: { type: String, default: "Not set" },
+    last_reminder_date: { type: Date },
     type: { type: String, required: true },
     status: { type: String, default: "unpaid" },
     expected_pay_date: { type: Date },
