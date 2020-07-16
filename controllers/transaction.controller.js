@@ -18,12 +18,8 @@ exports.validate = (method) => {
           .optional()
           .isString()
           .isIn(["paid", "unpaid"]),
-        body("transaction_name").optional().isString(),
-        body("transaction_role").optional().isString(),
+        body("expected_pay_date").optional().isISO8601()
       ];
-    }
-    case "find": {
-      return [body("store_id").isString(), body("customer_id").isString()];
     }
     case "update": {
       return [
@@ -38,8 +34,7 @@ exports.validate = (method) => {
           .optional()
           .isString()
           .isIn(["paid", "unpaid", "pending"]),
-        body("transaction_name").optional().isString(),
-        body("transaction_role").optional().isString(),
+        body("expected_pay_date").optional().isISO8601()
       ];
     }
   }
@@ -113,8 +108,7 @@ exports.create = async (req, res, next) => {
       description: req.body.description || "Not set",
       type: req.body.type,
       status: req.body.status || "unpaid",
-      transaction_name: req.body.transaction_name || null,
-      transaction_role: req.body.transaction_role || null,
+      expected_pay_date: req.body.expected_pay_date || null
     });
 
     await user.save();
@@ -154,7 +148,7 @@ exports.findAll = async (req, res) => {
       });
     }
 
-    const store = user.stores.find((store) => store._id == req.body.store_id);
+    const store = user.stores.find((store) => store._id == req.params.store_id);
     if (!store) {
       return res.status(404).json({
         success: false,
@@ -167,7 +161,7 @@ exports.findAll = async (req, res) => {
     }
 
     const customer = store.customers.find(
-      (customer) => customer._id == req.body.customer_id
+      (customer) => customer._id == req.params.customer_id
     );
     if (!customer) {
       return res.status(404).json({
@@ -377,7 +371,7 @@ exports.findOne = async (req, res) => {
       });
     }
 
-    const store = user.stores.find((store) => store._id == req.body.store_id);
+    const store = user.stores.find((store) => store._id == req.params.store_id);
     if (!store) {
       return res.status(404).json({
         success: false,
@@ -390,7 +384,7 @@ exports.findOne = async (req, res) => {
     }
 
     const customer = store.customers.find(
-      (customer) => customer._id == req.body.customer_id
+      (customer) => customer._id == req.params.customer_id
     );
     if (!customer) {
       return res.status(404).json({
@@ -499,10 +493,7 @@ exports.update = async (req, res) => {
     transaction.description = req.body.description || transaction.description;
     transaction.type = req.body.type || transaction.type;
     transaction.status = req.body.status || transaction.status;
-    transaction.transaction_name =
-      req.body.transaction_name || transaction.transaction_name;
-    transaction.transaction_role =
-      req.body.transaction_role || transaction.transaction_role;
+    transaction.expected_pay_date = req.body.expected_pay_date || transaction.expected_pay_date;
 
     await user.save();
     res.status(200).json({
@@ -540,7 +531,7 @@ exports.delete = async (req, res) => {
       });
     }
 
-    const store = user.stores.find((store) => store._id == req.body.store_id);
+    const store = user.stores.find((store) => store._id == req.params.store_id);
     if (!store) {
       return res.status(404).json({
         success: false,
@@ -553,7 +544,7 @@ exports.delete = async (req, res) => {
     }
 
     const customer = store.customers.find(
-      (customer) => customer._id == req.body.customer_id
+      (customer) => customer._id == req.params.customer_id
     );
     if (!customer) {
       return res.status(404).json({
