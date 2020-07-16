@@ -268,7 +268,7 @@ exports.newComplaint = async (req, res) => {
 };
 
 
-// @route       POST /complaint/new/:ownerId
+// @route       GET /complaint/new/:ownerId
 // @desc        Store Admin Gets all Complaints in DB
 // @access      Private
 exports.getAllComplaintsInDB = async (req, res) => {
