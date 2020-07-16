@@ -272,14 +272,14 @@ exports.findAllUser = async (req, res) => {
       });
     }
 
-    let transactions;
+    let transactions = [];
     user.stores.forEach((store) => {
       store.customers.forEach((customer) => {
-        if (transactions) {
-          transactions = customer.transactions.concat(transactions);
-        } else {
-          transactions = customer.transactions;
-        }
+        customer.transactions.forEach(transaction => {
+          let localTransaction = JSON.parse(JSON.stringify(transaction));
+          localTransaction.store_name = store.store_name
+          transactions.push(localTransaction);
+        })
       });
     });
 
