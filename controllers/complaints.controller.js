@@ -81,7 +81,7 @@ exports.findOne = async (req, res) => {
 }
 
 // @route       PUT /complaints/update/:complaintId
-// @desc        Super 
+// @desc        Super Admin updates status of complaints
 // @access      Public
 exports.update = async (req, res) => {
   const { status } = req.body;
@@ -266,3 +266,53 @@ exports.newComplaint = async (req, res) => {
     });
   }
 };
+
+
+// @route       POST /complaint/new/:ownerId
+// @desc        Store Admin Gets all Complaints in DB
+// @access      Private
+exports.getAllComplaintsInDB = async (req, res) => {
+  try {
+    // User who logs in
+    const adminUser = await StoreOwner.find({ identifier: req.user.phone_number });
+    console.log(adminUser)
+    let userRole;
+
+    adminUser.forEach(admin => {
+      userRole = admin.local.user_role;
+    })
+
+    // Ensure it's the Super Admin
+    if (userRole !== 'super_admin') {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorised! Only Super Admin can get all Complaint!",
+      });
+    }
+
+    // All complaints
+    const complaints = await Complaint.find({ });
+
+    // If complaint don't exist
+    if (!complaints) return res.status(404).json({
+      success: false,
+      message: "Complaint not found",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "All complaints in the database!",
+      data: complaints
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: {
+        statusCode: 500,
+        message: err.message
+      }
+    });
+  }
+}
