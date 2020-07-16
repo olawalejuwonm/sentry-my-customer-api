@@ -98,6 +98,79 @@ module.exports.loginUser = async (req, res, next) => {
     });
 };
 
+module.exports.loginAssistant = async (req, res, next) => {
+  const { password, phone_number } = req.body;
+
+  //console.log(password, phone_number);
+  await UserModel.findOne({
+    "assistants.phone_number": phone_number
+  })
+    .then((user) => {
+      const storeAssistants = user.assistants;
+
+      storeAssistants.forEach(storeAssistant => {
+        if (storeAssistant.phone_number == phone_number) {
+          bCrypt
+            .compare(password, storeAssistant.password)
+            .then(doPasswordMatch => {
+              if (doPasswordMatch) {
+                const apiToken = jwt.sign(
+                  {
+                    phone_number: phone_number,
+                    password: password,
+                    user_role: storeAssistant.user_role
+                  },
+                  process.env.JWT_KEY,
+                  {
+                    expiresIn: "1h"
+                  }
+                );
+                storeAssistant.api_token = apiToken;
+                user.save();
+                res.status(200).json({
+                  success: true,
+                  message: "You're logged in successfully.",
+                  data: {
+                    statusCode: 200,
+                    message: "Store Assistant retrieved successfully.",
+                    user: storeAssistant
+                  }
+                });
+              } else {
+                res.status(401).json({
+                  success: false,
+                  message: "Invalid Password.",
+                  error: {
+                    code: 401,
+                    description: "Invalid Password"
+                  }
+                });
+              }
+            });
+        }
+      });
+    })
+    .catch(error => {
+      return res.status(500).json({
+        success: "false",
+        message: "Internal Server Error.",
+        error: {
+          statusCode: 500,
+          message: "Internal Server Error."
+        }
+      });
+    });
+
+  return res.status(401).json({
+    success: false,
+    message: "Invalid Password.",
+    error: {
+      code: 401,
+      description: "Invalid Password"
+    }
+  });
+};
+
 //  Login Customer
 module.exports.loginCustomer = async (req, res, next) => {
   const { name, phone_number } = req.body;
