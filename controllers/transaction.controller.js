@@ -17,7 +17,7 @@ exports.validate = (method) => {
         body("status")
           .optional()
           .isString()
-          .isIn(["paid", "unpaid", "pending"]),
+          .isIn(["paid", "unpaid"]),
         body("transaction_name").optional().isString(),
         body("transaction_role").optional().isString(),
       ];
