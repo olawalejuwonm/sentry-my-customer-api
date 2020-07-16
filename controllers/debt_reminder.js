@@ -152,6 +152,48 @@ exports.getAll = async (req, res) => {
     });
 };
 
+exports.getStoreDebt = (req, res) => {
+  const identifier = req.user.phone_number;
+  let allDebts = [];
+
+  UserModel.findOne({ identifier })
+    .then((user) => {
+      user.stores.forEach((store) => {
+        if (store._id == req.params.storeId) {
+          store.customers.forEach((customer) => {
+            customer.transactions.forEach((transaction) => {
+              if (
+                transaction.type.toLowerCase() == "debt" &&
+                transaction.status.toLowerCase() == "unpaid"
+              ) {
+                allDebts.push(transaction);
+              }
+            });
+          });
+        }
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "All Debts",
+        data: {
+          statusCode: 200,
+          debts: allDebts,
+        },
+      });
+    })
+    .catch((err) => {
+      res.status(500).json({
+        sucess: false,
+        message: "Couldn't find user or some server error occurred",
+        error: {
+          statusCode: 500,
+          message: err.message,
+        },
+      });
+    });
+};
+
 exports.getById = async (req, res) => {
   let identifier = req.user.phone_number;
 
