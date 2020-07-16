@@ -4,8 +4,13 @@ const storeAssistantModel = require("../models/storeAssistant");
 const storeModel = require("../models/store");
 const customerModel = require("../models/customer");
 
-exports.storeAdminDashboard = async (req, res) => {
+exports.storeAdminDashboard = async (req, res, next) => {
   const identifier = req.user.phone_number;
+  const role = req.user.user_role;
+
+  if (role != "store_admin") {
+    return next();
+  }
 
   const storeAdmin = await storeAdminModel.findOne({ identifier });
   if (!storeAdmin) {
@@ -68,6 +73,7 @@ exports.storeAdminDashboard = async (req, res) => {
 
           const transactions = customer.transactions
           transactions.forEach(transaction => {
+            //push in details of each transaction
             let obj ={};
             obj.storeName = store.store_name;
             obj.customerName = customer.name;
@@ -77,6 +83,7 @@ exports.storeAdminDashboard = async (req, res) => {
             if (transaction.debts.length != 0) {
               const debts = transaction.debts;
               debts.forEach(debt => {
+                //push in details of each debt
                 let obj = {}
                 obj.storeName = store.store_name;
                 obj.customerName = customer.name;
@@ -178,11 +185,92 @@ exports.superAdminDashboard = async (req, res) => {
       message: "Internal server error",
       error: {
         statusCode: 500,
-        message: error
+        message: error.message
       }
     });
   }
 };
+
+exports.storeAssistantDashboard = (req, res) => {
+
+}
+
+exports.customerDashboard = async (req, res) => {
+  const phone_number = req.user.phone_number;
+  const data = [];
+  try {
+    const storeAdmin = await storeAdminModel.aggregate(
+      [ 
+        { $unwind: '$stores'},
+        { $unwind: '$stores.customers'},
+        { $match: {'stores.customers.phone_number':phone_number}}
+    ]);
+     
+    if (storeAdmin.length == 0) {
+      res.status(404).send({
+        success: false,
+        message: 'Customer store has no admin',
+        error: {
+          statusCode: 400,
+          message: 'Customer store has no admin'
+        }
+      })
+    }
+    
+    const store = storeAdmin[0].stores;
+    if (!store) {
+      res.status(404).send({
+        success: false,
+        message: 'Customer does not belong to a store',
+        error: {
+          statusCode: 400,
+          message: 'Customer does not belong to a store'
+        }
+      })
+    }
+    
+    if (storeAdmin.length == 1) {
+      const customer = store.customers
+      //sort customer transactions and debts by date
+      customer.transactions.sort(compareTransactions);
+      if (customer.transactions.debts) {
+        customer.transactions.debts.sort(compareTransactions); 
+      }  
+      res.status(200).send({
+        success: true,
+        message: 'Customer dashboard data',
+        data: storeAdmin
+      })
+    }
+    
+    storeAdmin.forEach(admin => {
+      const store = admin.stores;
+      const customer = store.customers
+      //sort customer transactions and debts by date
+      customer.transactions.sort(compareTransactions);
+      if (customer.transactions.debts) {
+        customer.transactions.debts.sort(compareTransactions); 
+      } 
+      data.push(admin);
+    })
+
+    res.status(200).send({
+      success: true,
+      message: 'Customer dashboard data',
+      data: storeAdmin
+    })
+    
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message:'Internal server error',
+      error:{
+        statusCode: 500,
+        message: error.message
+      }
+    })
+  }
+}
 
 //utility functions
 function compareTransactions(a, b) {

@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const Transaction = require("../models/transaction");
 const { all } = require("../routes/customer");
 const cron = require("node-cron");
+const transaction = require("../models/transaction");
 const africastalking = require("africastalking")({
   apiKey: process.env.AFRICASTALKING_API_KEY,
   username: process.env.AFRICASTALKING_USERNAME,
@@ -297,6 +298,56 @@ exports.markAsPaid = async (req, res) => {
 //       });
 //     });
 // };
+
+exports.assistantView = (req, res) => {
+  console.log("starting");
+  const identifier = req.user.phone_number;
+  let data = [];
+
+  UserModel.findOne({ identifier })
+    .then((user) => {
+      let assistants = user.assistants;
+      //loop to search for all debt linked to a particular assistant
+      assistants.forEach((assistant) => {
+        let assistantName;
+        let assistantDebt = [];
+        let stores = user.stores;
+        stores.forEach((store) => {
+          if (assistant.store_id == store._id) {
+            assistantName = assistant.name;
+            let customers = store.customers;
+            customers.forEach((customer) => {
+              let transactions = customer.transactions;
+              transactions.forEach((transaction) => {
+                if (
+                  transaction.assistant_inCharge == assistant._id &&
+                  transaction.type.toLowerCase() == "debt"
+                ) {
+                  assistantDebt.push(transaction);
+                  console.log(transaction);
+                }
+              });
+            });
+          }
+        });
+        //object to hold the found details
+        let obj = {};
+        obj["assistantName"] = assistantName;
+        obj["assistant_id"] = assistant._id;
+
+        obj["debt"] = assistantDebt;
+
+        //adding the found data to the data array to be displayed
+        data.push(obj);
+      });
+      res.status(200).json({
+        result: data,
+      });
+    })
+    .catch((err) => {
+      res.send(err);
+    });
+};
 
 let regex = /^\+(?:[0-9] ?){6,14}[0-9]$/;
 

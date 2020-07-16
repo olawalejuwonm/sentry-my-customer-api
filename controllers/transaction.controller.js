@@ -226,10 +226,10 @@ exports.findAllStore = async (req, res) => {
       });
     }
 
-    let transactions;
+    let transactions = [];
     store.customers.forEach(customer => {
       if(customer.transactions.length  > 0) {
-        if(transactions) {
+        if(transactions.length > 0) {
           transactions = customer.transactions.concat(transactions)
         } else {
           transactions = customer.transactions
@@ -241,6 +241,7 @@ exports.findAllStore = async (req, res) => {
       success: true,
       message: "Transactions",
       data: {
+        statusCode: 200,
         transactions: transactions,
       },
     });
