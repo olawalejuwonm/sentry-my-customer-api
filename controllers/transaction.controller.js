@@ -491,7 +491,7 @@ exports.update = async (req, res) => {
       req.body.total_amount || transaction.total_amount;
     transaction.description = req.body.description || transaction.description;
     transaction.type = req.body.type || transaction.type;
-    transaction.status = req.body.status || transaction.status;
+    transaction.status = typeof req.body.status !== 'undefined' ? req.body.status : transaction.status;
     transaction.expected_pay_date = req.body.expected_pay_date || transaction.expected_pay_date;
 
     await user.save();
