@@ -10,7 +10,7 @@ const transactionSchema = new mongoose.Schema(
     assistant_inCharge: { type: String, default: "Not set" },
     last_reminder_date: { type: Date },
     type: { type: String, required: true },
-    status: { type: String, default: "unpaid" },
+    status: { type: Boolean, default: true },
     expected_pay_date: { type: Date },
     store_ref_id: { type: String },
     customer_ref_id: { type: String },
