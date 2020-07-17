@@ -202,10 +202,12 @@ exports.getById = (req, res) => {
 
   UserModel.findOne({ identifier })
     .then((user) => {
+      let found = false;
       user.stores.forEach((store) => {
         store.customers.forEach((customer) => {
           customer.transactions.forEach((transaction) => {
-            if (transaction._id == req.params.transaction_id) {
+            if (transaction._id == req.params.transactionId) {
+              found = true;
               return res.status(200).json({
                 success: true,
                 message: "found",
@@ -218,6 +220,15 @@ exports.getById = (req, res) => {
           });
         });
       });
+      if (found == false) {
+        return res.status(404).json({
+          success: false,
+          message: "Transaction not found",
+          data: {
+            statusCode: 404,
+          },
+        });
+      }
     })
     .catch((err) => {
       res.status(500).json({
