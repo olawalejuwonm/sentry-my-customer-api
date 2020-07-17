@@ -407,11 +407,14 @@ exports.findOne = async (req, res) => {
       });
     }
 
+    let localTransaction = JSON.parse(JSON.stringify(transaction));
+    localTransaction.store_name = store.store_name
+
     res.status(200).json({
       success: true,
       message: "Transaction",
       data: {
-        transaction: transaction,
+        transaction: localTransaction,
       },
     });
   } catch (error) {
