@@ -205,7 +205,7 @@ exports.getById = (req, res) => {
       user.stores.forEach((store) => {
         store.customers.forEach((customer) => {
           customer.transactions.forEach((transaction) => {
-            if (transaction._id == req.params.debtId) {
+            if (transaction._id == req.params.transaction_id) {
               return res.status(200).json({
                 success: true,
                 message: "found",
@@ -243,12 +243,8 @@ exports.markAsPaid = (req, res) => {
         customers.forEach((customer) => {
           let transactions = customer.transactions;
           transactions.forEach((transaction) => {
-            if (
-              transaction._id == req.params.debtId &&
-              transaction.status == false
-            ) {
-              console.log("reached");
-              transaction["status"] == true;
+            if (transaction._id == req.params.transactionId) {
+              transaction["status"] = true;
             }
           });
         });
@@ -417,10 +413,12 @@ exports.send = (req, res) => {
 
   UserModel.findOne({ identifier })
     .then((user) => {
+      let found = false;
       user.stores.forEach((store) => {
         store.customers.forEach((customer) => {
           customer.transactions.forEach((transaction) => {
             if (transaction._id == transaction_id) {
+              found = true;
               to = customer.phone_number;
               amount = transaction.total_amount;
               store_name = store.store_name;
@@ -429,10 +427,10 @@ exports.send = (req, res) => {
         });
       });
 
-      if (to == undefined) {
+      if (found == false) {
         return res.status(400).json({
           success: false,
-          message: "Invalid Customer phone number",
+          message: `Customer with transaction id ${transaction_id} not found`,
         });
       }
 
