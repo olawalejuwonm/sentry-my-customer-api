@@ -103,7 +103,7 @@ exports.create = async (req, res, next) => {
       assistant_inCharge: req.body.assistant_inCharge || null,
       description: req.body.description || "Not set",
       type: req.body.type,
-      status: req.body.status || true,
+      status: req.body.status || false,
       expected_pay_date: req.body.expected_pay_date || null
     });
 
