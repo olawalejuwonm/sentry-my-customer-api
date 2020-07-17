@@ -125,7 +125,7 @@ exports.getAll = async (req, res) => {
         customer.transactions.forEach((transaction) => {
           if (
             transaction.type.toLowerCase() == "debt" &&
-            transaction.status.toLowerCase() == "unpaid"
+            transaction.status == false
           ) {
             allDebts.push(transaction);
           }
@@ -167,7 +167,7 @@ exports.getStoreDebt = (req, res) => {
             customer.transactions.forEach((transaction) => {
               if (
                 transaction.type.toLowerCase() == "debt" &&
-                transaction.status.toLowerCase() == "unpaid"
+                transaction.status == false
               ) {
                 allDebts.push(transaction);
               }
@@ -197,7 +197,7 @@ exports.getStoreDebt = (req, res) => {
     });
 };
 
-exports.getById = async (req, res) => {
+exports.getById = (req, res) => {
   let identifier = req.user.phone_number;
 
   UserModel.findOne({ identifier })
@@ -232,7 +232,7 @@ exports.getById = async (req, res) => {
 };
 
 //Route to set the status of a debt to paid
-exports.markAsPaid = async (req, res) => {
+exports.markAsPaid = (req, res) => {
   let identifier = req.user.phone_number;
 
   UserModel.findOne({ identifier })
@@ -243,8 +243,12 @@ exports.markAsPaid = async (req, res) => {
         customers.forEach((customer) => {
           let transactions = customer.transactions;
           transactions.forEach((transaction) => {
-            if (transaction._id == req.params.debtId) {
-              transaction["status"] = "paid";
+            if (
+              transaction._id == req.params.debtId &&
+              transaction.status == false
+            ) {
+              console.log("reached");
+              transaction["status"] == true;
             }
           });
         });
