@@ -16,6 +16,8 @@ const auth = require("../auth/auth");
 //all debt
 router.get("/debt", auth, debt.getAll);
 
+// router.get("/debt/:storeId", auth, debt.getStoreDebt);
+
 router.put("/debt/update/:transactionId", auth, debt.markAsPaid);
 
 router.get("/debt/assistant", auth, debt.assistantView);
