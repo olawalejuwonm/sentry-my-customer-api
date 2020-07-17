@@ -15,9 +15,7 @@ exports.validate = (method) => {
         body("description").optional().isString(),
         body("type").isString(),
         body("status")
-          .optional()
-          .isString()
-          .isIn(["paid", "unpaid"]),
+          .optional().isBoolean(),
         body("expected_pay_date").optional().isISO8601()
       ];
     }
@@ -31,9 +29,7 @@ exports.validate = (method) => {
         body("description").optional().isString(),
         body("type").optional().isString(),
         body("status")
-          .optional()
-          .isString()
-          .isIn(["paid", "unpaid", "pending"]),
+          .optional().isBoolean(),
         body("expected_pay_date").optional().isISO8601()
       ];
     }
@@ -107,7 +103,7 @@ exports.create = async (req, res, next) => {
       assistant_inCharge: req.body.assistant_inCharge || null,
       description: req.body.description || "Not set",
       type: req.body.type,
-      status: req.body.status || "unpaid",
+      status: req.body.status || false,
       expected_pay_date: req.body.expected_pay_date || null
     });
 
