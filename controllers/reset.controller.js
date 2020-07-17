@@ -48,7 +48,6 @@ module.exports.recover = async (req, res) => {
             message: "successful",
             data: {
               message: "successful",
-              otp: user.resetPasswordToken,
             },
           });
           const sms = africastalking.SMS;
@@ -72,7 +71,6 @@ module.exports.recover = async (req, res) => {
               res.status(500).json({
                 success: false,
                 message: "Something went wrong.",
-                otp: user.resetPasswordToken,
                 data: {
                   statusCode: 500,
                   error: "Something went wrong.",
@@ -81,23 +79,6 @@ module.exports.recover = async (req, res) => {
             });
         })
         .catch((err) => res.status(500).json({ message: err.message }));
-    })
-    .catch((err) => res.status(500).json({ message: err.message }));
-};
-
-module.exports.reset = async (req, res) => {
-  User.findOne({
-    resetPasswordToken: req.body.token,
-    resetPasswordExpires: { $gt: Date.now() },
-  })
-    .then((user) => {
-      if (!user)
-        return res
-          .status(401)
-          .json({ message: "Password reset token is invalid or has expired." });
-
-      //Redirect user to form with the email address
-      res.render("reset", { user });
     })
     .catch((err) => res.status(500).json({ message: err.message }));
 };
