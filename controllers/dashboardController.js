@@ -37,7 +37,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.newCustomers = [];
     data.transactions = [];
     data.recentTransactions = [];
-    data.recentDebts = []
+    data.recentDebts = [];
 
     stores.forEach(store => {
       //increment customer count by number of customers in each store
@@ -60,7 +60,6 @@ exports.storeAdminDashboard = async (req, res, next) => {
         );
       }
 
-
       customers.forEach(customer => {
         //push in transaction details for each customer
         if (customer.transactions.length != 0) {
@@ -71,10 +70,10 @@ exports.storeAdminDashboard = async (req, res, next) => {
           obj.transactions = customer.transactions.sort(compareTransactions);
           data.transactions.push(obj);
 
-          const transactions = customer.transactions
+          const transactions = customer.transactions;
           transactions.forEach(transaction => {
             //push in details of each transaction
-            let obj ={};
+            let obj = {};
             obj.storeName = store.store_name;
             obj.customerName = customer.name;
             obj.transaction = transaction;
@@ -84,17 +83,14 @@ exports.storeAdminDashboard = async (req, res, next) => {
               const debts = transaction.debts;
               debts.forEach(debt => {
                 //push in details of each debt
-                let obj = {}
+                let obj = {};
                 obj.storeName = store.store_name;
                 obj.customerName = customer.name;
                 obj.debt = debt;
                 data.recentDebts.push(obj);
-              })
-              
+              });
             }
-
-          })
-
+          });
         }
       });
     });
@@ -110,7 +106,6 @@ exports.storeAdminDashboard = async (req, res, next) => {
       data: data
     });
   } catch (error) {
-  
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -158,6 +153,10 @@ exports.superAdminDashboard = async (req, res) => {
     data.storesCount = 0;
     data.assistantsCount = 0;
     data.customerCount = 0;
+    data.totalDebt = 0;
+    data.transactionCount = 0;
+    data.totalTransactionAmount = 0;
+    data.transactions = [];
 
     data.usersCount = 0;
 
@@ -167,13 +166,38 @@ exports.superAdminDashboard = async (req, res) => {
       data.assistantsCount += user.assistants.length;
       stores.forEach(store => {
         let customers = store.customers;
+
         data.customerCount += customers.length;
+
+        customers.forEach(customer => {
+          let transactions = customer.transactions;
+          data.transactionCount = transactions.length;
+
+          transactions.forEach(transaction => {
+            let obj = {};
+            obj.storeName = store.store_name;
+            obj.customerName = customer.name;
+            obj.transaction = transaction;
+            data.totalTransactionAmount += transaction.total_amount;
+
+            data.transactions.push(obj);
+
+            let debts = transaction.debts;
+            debts.forEach(debt => {
+              data.totalDebt += debt.amount;
+            });
+          });
+        });
       });
     });
 
     // the total number of users should be = storeAdmin + customers + storeAssistants
     data.usersCount =
       data.storeAdminCount + data.customerCount + data.assistantsCount;
+
+    // sort transactions
+    data.transactions.sort(compareRecentTransactions);
+
     res.status(200).json({
       success: true,
       message: "Dashboard data",
@@ -191,98 +215,88 @@ exports.superAdminDashboard = async (req, res) => {
   }
 };
 
-exports.storeAssistantDashboard = (req, res) => {
-
-}
+exports.storeAssistantDashboard = (req, res) => {};
 
 exports.customerDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
   const data = [];
   try {
-    const storeAdmin = await storeAdminModel.aggregate(
-      [ 
-        { $unwind: '$stores'},
-        { $unwind: '$stores.customers'},
-        { $match: {'stores.customers.phone_number':phone_number}}
+    const storeAdmin = await storeAdminModel.aggregate([
+      { $unwind: "$stores" },
+      { $unwind: "$stores.customers" },
+      { $match: { "stores.customers.phone_number": phone_number } }
     ]);
-     
+
     if (storeAdmin.length == 0) {
       res.status(404).send({
         success: false,
-        message: 'Customer store has no admin',
+        message: "Customer store has no admin",
         error: {
           statusCode: 400,
-          message: 'Customer store has no admin'
+          message: "Customer store has no admin"
         }
-      })
+      });
     }
-    
+
     const store = storeAdmin[0].stores;
     if (!store) {
       res.status(404).send({
         success: false,
-        message: 'Customer does not belong to a store',
+        message: "Customer does not belong to a store",
         error: {
           statusCode: 400,
-          message: 'Customer does not belong to a store'
+          message: "Customer does not belong to a store"
         }
-      })
+      });
     }
-    
+
     if (storeAdmin.length == 1) {
-      const customer = store.customers
+      const customer = store.customers;
       //sort customer transactions and debts by date
       customer.transactions.sort(compareTransactions);
       if (customer.transactions.debts) {
-        customer.transactions.debts.sort(compareTransactions); 
-      }  
+        customer.transactions.debts.sort(compareTransactions);
+      }
       res.status(200).send({
         success: true,
-        message: 'Customer dashboard data',
+        message: "Customer dashboard data",
         data: storeAdmin
-      })
+      });
     }
-    
+
     storeAdmin.forEach(admin => {
       const store = admin.stores;
-      const customer = store.customers
+      const customer = store.customers;
       //sort customer transactions and debts by date
       customer.transactions.sort(compareTransactions);
       if (customer.transactions.debts) {
-        customer.transactions.debts.sort(compareTransactions); 
-      } 
+        customer.transactions.debts.sort(compareTransactions);
+      }
       data.push(admin);
-    })
+    });
 
     res.status(200).send({
       success: true,
-      message: 'Customer dashboard data',
+      message: "Customer dashboard data",
       data: storeAdmin
-    })
-    
+    });
   } catch (error) {
     res.status(500).send({
       success: false,
-      message:'Internal server error',
-      error:{
+      message: "Internal server error",
+      error: {
         statusCode: 500,
         message: error.message
       }
-    })
+    });
   }
-}
+};
 
 //utility functions
 function compareTransactions(a, b) {
   //compares two time stamps and places the earlier timestamp before the other
-  if (
-    a.createdAt.getTime() > b.createdAt.getTime()
-  )
-    return -1;
-  if (
-    b.createdAt.getTime() < a.createdAt.getTime()
-  )
-    return 1;
+  if (a.createdAt.getTime() > b.createdAt.getTime()) return -1;
+  if (b.createdAt.getTime() < a.createdAt.getTime()) return 1;
 
   return 0;
 }
@@ -290,11 +304,13 @@ function compareTransactions(a, b) {
 function compareCustomers(a, b) {
   //compares two time stamps and places the earlier timestamp before the other
   if (
-    a.transactions[0].createdAt.getTime() > b.transactions[0].createdAt.getTime()
+    a.transactions[0].createdAt.getTime() >
+    b.transactions[0].createdAt.getTime()
   )
     return -1;
   if (
-    b.transactions[0].createdAt.getTime() < a.transactions[0].createdAt.getTime()
+    b.transactions[0].createdAt.getTime() <
+    a.transactions[0].createdAt.getTime()
   )
     return 1;
 
@@ -303,13 +319,9 @@ function compareCustomers(a, b) {
 
 function compareRecentTransactions(a, b) {
   //compares two time stamps and places the earlier timestamp before the other
-  if (
-    a.transaction.createdAt.getTime() > b.transaction.createdAt.getTime()
-  )
+  if (a.transaction.createdAt.getTime() > b.transaction.createdAt.getTime())
     return -1;
-  if (
-    b.transaction.createdAt.getTime() < a.transaction.createdAt.getTime()
-  )
+  if (b.transaction.createdAt.getTime() < a.transaction.createdAt.getTime())
     return 1;
 
   return 0;
@@ -317,14 +329,8 @@ function compareRecentTransactions(a, b) {
 
 function compareRecentDebts(a, b) {
   //compares two time stamps and places the earlier timestamp before the other
-  if (
-    a.debt.createdAt.getTime() > b.debt.createdAt.getTime()
-  )
-    return -1;
-  if (
-    b.debt.createdAt.getTime() < a.debt.createdAt.getTime()
-  )
-    return 1;
+  if (a.debt.createdAt.getTime() > b.debt.createdAt.getTime()) return -1;
+  if (b.debt.createdAt.getTime() < a.debt.createdAt.getTime()) return 1;
 
   return 0;
 }
