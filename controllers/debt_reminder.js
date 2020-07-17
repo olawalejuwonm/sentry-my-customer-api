@@ -13,22 +13,22 @@ const africastalking = require("africastalking")({
   username: process.env.AFRICASTALKING_USERNAME,
 });
 
-// exports.validate = (method) => {
-//   switch (method) {
-//     case "body": {
-//       return [
-//         body("store_name").isString(),
-//         body("customer_phone_number").isLength({ min: 3 }),
-//         body("message").isLength({ min: 3 }),
-//         body("status").isLength({ min: 3 }),
-//         body("pay_date").isLength({ min: 3 }),
-//         body("transaction_id").optional(),
-//         body("name").isString().isLength({ min: 1 }),
-//         body("amount").isLength({ min: 3 }),
-//       ];
-//     }
-//   }
-// };
+exports.validate = (method) => {
+  switch (method) {
+    case "body": {
+      return [
+        body("store_name").isString(),
+        body("customer_phone_number").isLength({ min: 3 }),
+        body("message").isLength({ min: 3 }),
+        body("status").isLength({ min: 3 }),
+        body("pay_date").isLength({ min: 3 }),
+        body("transaction_id").optional(),
+        body("name").isString().isLength({ min: 1 }),
+        body("amount").isLength({ min: 3 }),
+      ];
+    }
+  }
+};
 
 // // exports.create = async (req, res) => {
 // //   // Add new message
@@ -119,20 +119,17 @@ exports.getAll = async (req, res) => {
 
   UserModel.findOne({ identifier })
     .then((user) => {
-      user.stores.forEach((store) => {
-        let storeDebt = {};
-        storeDebt["storeName"] = store.store_name;
-        let debts = [];
-        store.customers.forEach((customer) => {
-          customer.transactions.forEach((transaction) => {
-            if (transaction.type.toLowerCase() == "debt") {
-              debts.push(transaction);
-            }
-          });
+      let firstStore = user.stores[0];
+      //search loop to get all debt if the first store
+      firstStore.customers.forEach((customer) => {
+        customer.transactions.forEach((transaction) => {
+          if (
+            transaction.type.toLowerCase() == "debt" &&
+            transaction.status == false
+          ) {
+            allDebts.push(transaction);
+          }
         });
-        storeDebt["debts"] = debts;
-
-        allDebts.push(storeDebt);
       });
 
       return res.status(200).json({
@@ -156,26 +153,36 @@ exports.getAll = async (req, res) => {
     });
 };
 
-exports.getById = async (req, res) => {
-  let identifier = req.user.phone_number;
+//Gets the debt of a particular store
+exports.getStoreDebt = (req, res) => {
+  const identifier = req.user.phone_number;
+  let allDebts = [];
 
   UserModel.findOne({ identifier })
     .then((user) => {
+      //search loop to get the debt of a store passed in the params
       user.stores.forEach((store) => {
-        store.customers.forEach((customer) => {
-          customer.transactions.forEach((transaction) => {
-            if (transaction._id == req.params.debtId) {
-              return res.status(200).json({
-                success: true,
-                message: "found",
-                data: {
-                  statusCode: 200,
-                  debt: transaction,
-                },
-              });
-            }
+        if (store._id == req.params.storeId) {
+          store.customers.forEach((customer) => {
+            customer.transactions.forEach((transaction) => {
+              if (
+                transaction.type.toLowerCase() == "debt" &&
+                transaction.status == false
+              ) {
+                allDebts.push(transaction);
+              }
+            });
           });
-        });
+        }
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "All Debts",
+        data: {
+          statusCode: 200,
+          debts: allDebts,
+        },
       });
     })
     .catch((err) => {
@@ -190,7 +197,53 @@ exports.getById = async (req, res) => {
     });
 };
 
-exports.markAsPaid = async (req, res) => {
+exports.getById = (req, res) => {
+  let identifier = req.user.phone_number;
+
+  UserModel.findOne({ identifier })
+    .then((user) => {
+      let found = false;
+      user.stores.forEach((store) => {
+        store.customers.forEach((customer) => {
+          customer.transactions.forEach((transaction) => {
+            if (transaction._id == req.params.transactionId) {
+              found = true;
+              return res.status(200).json({
+                success: true,
+                message: "found",
+                data: {
+                  statusCode: 200,
+                  debt: transaction,
+                },
+              });
+            }
+          });
+        });
+      });
+      if (found == false) {
+        return res.status(404).json({
+          success: false,
+          message: "Transaction not found",
+          data: {
+            statusCode: 404,
+          },
+        });
+      }
+    })
+    .catch((err) => {
+      res.status(500).json({
+        sucess: false,
+        message: "Couldn't find user or some server error occurred",
+        error: {
+          statusCode: 500,
+          message: err.message,
+        },
+      });
+    });
+};
+
+//Route to set the status of a debt to paid
+exports.markAsPaid = (req, res) => {
   let identifier = req.user.phone_number;
 
   UserModel.findOne({ identifier })
@@ -201,8 +254,8 @@ exports.markAsPaid = async (req, res) => {
         customers.forEach((customer) => {
           let transactions = customer.transactions;
           transactions.forEach((transaction) => {
-            if (transaction._id == req.params.debtId) {
-              transaction["status"] = "paid";
+            if (transaction._id == req.params.transactionId) {
+              transaction["status"] = true;
             }
           });
         });
@@ -299,56 +352,57 @@ exports.markAsPaid = async (req, res) => {
 //     });
 // };
 
-exports.assistantView = (req, res) => {
-  console.log("starting");
-  const identifier = req.user.phone_number;
-  let data = [];
+// exports.assistantView = (req, res) => {
+//   console.log("starting");
+//   const identifier = req.user.phone_number;
+//   let data = [];
 
-  UserModel.findOne({ identifier })
-    .then((user) => {
-      let assistants = user.assistants;
-      //loop to search for all debt linked to a particular assistant
-      assistants.forEach((assistant) => {
-        let assistantName;
-        let assistantDebt = [];
-        let stores = user.stores;
-        stores.forEach((store) => {
-          if (assistant.store_id == store._id) {
-            assistantName = assistant.name;
-            let customers = store.customers;
-            customers.forEach((customer) => {
-              let transactions = customer.transactions;
-              transactions.forEach((transaction) => {
-                if (
-                  transaction.assistant_inCharge == assistant._id &&
-                  transaction.type.toLowerCase() == "debt"
-                ) {
-                  assistantDebt.push(transaction);
-                  console.log(transaction);
-                }
-              });
-            });
-          }
-        });
-        //object to hold the found details
-        let obj = {};
-        obj["assistantName"] = assistantName;
-        obj["assistant_id"] = assistant._id;
+//   UserModel.findOne({ identifier })
+//     .then((user) => {
+//       let assistants = user.assistants;
+//       //loop to search for all debt linked to a particular assistant
+//       assistants.forEach((assistant) => {
+//         let assistantName;
+//         let assistantDebt = [];
+//         let stores = user.stores;
+//         stores.forEach((store) => {
+//           if (assistant.store_id == store._id) {
+//             assistantName = assistant.name;
+//             let customers = store.customers;
+//             customers.forEach((customer) => {
+//               let transactions = customer.transactions;
+//               transactions.forEach((transaction) => {
+//                 if (
+//                   transaction.assistant_inCharge == assistant._id &&
+//                   transaction.type.toLowerCase() == "debt"
+//                 ) {
+//                   assistantDebt.push(transaction);
+//                   console.log(transaction);
+//                 }
+//               });
+//             });
+//           }
+//         });
+//         //object to hold the found details
+//         let obj = {};
+//         obj["assistantName"] = assistantName;
+//         obj["assistant_id"] = assistant._id;
 
-        obj["debt"] = assistantDebt;
+//         obj["debt"] = assistantDebt;
 
-        //adding the found data to the data array to be displayed
-        data.push(obj);
-      });
-      res.status(200).json({
-        result: data,
-      });
-    })
-    .catch((err) => {
-      res.send(err);
-    });
-};
+//         //adding the found data to the data array to be displayed
+//         data.push(obj);
+//       });
+//       res.status(200).json({
+//         result: data,
+//       });
+//     })
+//     .catch((err) => {
+//       res.send(err);
+//     });
+// };
 
+//Regex for validating phone number
 let regex = /^\+(?:[0-9] ?){6,14}[0-9]$/;
 
 // Send reminder route
@@ -370,10 +424,12 @@ exports.send = (req, res) => {
 
   UserModel.findOne({ identifier })
     .then((user) => {
+      let found = false;
       user.stores.forEach((store) => {
         store.customers.forEach((customer) => {
           customer.transactions.forEach((transaction) => {
             if (transaction._id == transaction_id) {
+              found = true;
               to = customer.phone_number;
               amount = transaction.total_amount;
               store_name = store.store_name;
@@ -382,14 +438,21 @@ exports.send = (req, res) => {
         });
       });
 
+      if (found == false) {
+        return res.status(400).json({
+          success: false,
+          message: `Customer with transaction id ${transaction_id} not found`,
+        });
+      }
+
       if (message == undefined) {
-        reminder_message = `You have an unpaid debt of ${amount}Naira in ${store_name}`;
+        reminder_message = `You have an unpaid debt of ${amount} Naira in ${store_name}`;
       } else {
         reminder_message = message;
       }
 
       if (!regex.test(to)) {
-        if (to.charAt(0) == 0) {
+        if (to.charAt(0) == "0") {
           to = to.slice(1);
           to = "+234" + to;
         } else {

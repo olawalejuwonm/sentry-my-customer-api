@@ -81,23 +81,8 @@ exports.send = async (req, res) => {
       message: "successful",
       data: {
         message: "successful",
-        otp: otpSaveResult.otp_code,
       },
     });
-
-    // const sms = africastalking.SMS;
-    // await sms.send({
-    //   to: [`+${req.body.phone_number}`],
-    //   message: `Your number verification to MyCustomer is ${otpSaveResult.otp_code}`
-    // });
-
-    // res.status(200).json({
-    //   success: true,
-    //   message: "successful",
-    //   data: {
-    //     message: "successful"
-    //   }
-    // });
   } catch (err) {
     res.status(500).json({
       success: false,

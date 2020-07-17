@@ -7,13 +7,13 @@ const CustomerModel = require("../models/customer");
 
 exports.validate = (method) => {
   switch (method) {
-      case 'body': {
-          return [
-            body('phone_number').isInt(),
-            body('phone_number').isMobilePhone(),
-            body('password').isLength({min: 6}),
-          ]
-      }
+    case "body": {
+      return [
+        body("phone_number").isInt(),
+        body("phone_number").isMobilePhone(),
+        body("password").isLength({ min: 6 }),
+      ];
+    }
   }
 };
 
@@ -40,7 +40,7 @@ module.exports.registerUser = async (req, res, next) => {
 
   // TO REGISTER A SUPER ADMIN, USER ROLE IS NEEDED AS A REQUEST
   user.local.user_role = user_role;
-  
+
   user.api_token = token;
   user.identifier = phone_number;
   //  Encrypt the Password
