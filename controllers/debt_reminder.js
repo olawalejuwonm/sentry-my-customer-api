@@ -119,16 +119,18 @@ exports.getAll = async (req, res) => {
 
   UserModel.findOne({ identifier })
     .then((user) => {
-      let firstStore = user.stores[0];
-      //search loop to get all debt if the first store
-      firstStore.customers.forEach((customer) => {
-        customer.transactions.forEach((transaction) => {
-          if (
-            transaction.type.toLowerCase() == "debt" &&
-            transaction.status == false
-          ) {
-            allDebts.push(transaction);
-          }
+      let stores = user.stores;
+      //search loop to get all debt
+      stores.forEach((store) => {
+        store.customers.forEach((customer) => {
+          customer.transactions.forEach((transaction) => {
+            if (
+              transaction.type.toLowerCase() == "debt" &&
+              transaction.status == false
+            ) {
+              allDebts.push(transaction);
+            }
+          });
         });
       });
 
@@ -455,6 +457,8 @@ exports.send = (req, res) => {
         if (to.charAt(0) == "0") {
           to = to.slice(1);
           to = "+234" + to;
+        } else if (to.charAt(0) == "2") {
+          to = "+" + to;
         } else {
           to = "+234" + to;
         }
@@ -477,7 +481,7 @@ exports.send = (req, res) => {
           } else {
             res.status(200).json({
               success: true,
-              Message: "Reminder send",
+              Message: "Reminder sent",
               details: {
                 to,
                 reminder_message,
@@ -541,9 +545,11 @@ exports.schedule = (req, res) => {
       }
 
       if (!regex.test(to)) {
-        if (to.charAt(0) == 0) {
+        if (to.charAt(0) == "0") {
           to = to.slice(1);
           to = "+234" + to;
+        } else if (to.charAt(0) == "2") {
+          to = "+" + to;
         } else {
           to = "+234" + to;
         }
