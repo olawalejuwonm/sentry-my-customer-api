@@ -76,69 +76,14 @@ module.exports.loginUser = async (req, res, next) => {
             });
           });
       } else {
-        UserModel.findOne({
-          "assistants.phone_number": phone_number
-        })
-          .then(user => {
-            const storeAssistants = user.assistants;
-
-            storeAssistants.forEach(storeAssistant => {
-              if (storeAssistant.phone_number == phone_number) {
-                user.stores.forEach(store => {
-                  if (store._id == storeAssistant.store_id) {
-                    bCrypt
-                      .compare(password, storeAssistant.password)
-                      .then(doPasswordMatch => {
-                        if (doPasswordMatch) {
-                          const apiToken = jwt.sign(
-                            {
-                              phone_number: phone_number,
-                              password: password,
-                              user_role: storeAssistant.user_role
-                            },
-                            process.env.JWT_KEY,
-                            {
-                              expiresIn: "1h"
-                            }
-                          );
-                          storeAssistant.api_token = apiToken;
-                          user.save();
-                          return res.status(200).json({
-                            success: true,
-                            message: "You're logged in successfully.",
-                            data: {
-                              statusCode: 200,
-                              message:
-                                "Store Assistant retrieved successfully.",
-                              user: {local: storeAssistant, stores: [store], api_token: storeAssistant.api_token}
-                            }
-                          });
-                        } else {
-                          return res.status(401).json({
-                            success: false,
-                            message: "Invalid Password.",
-                            error: {
-                              code: 401,
-                              description: "Invalid Password"
-                            }
-                          });
-                        }
-                      });
-                  }
-                });
-              }
-            });
-          })
-          .catch(error => {
-            return res.status(500).json({
-              success: "false",
-              message: "Internal Server Error.",
-              error: {
-                statusCode: 500,
-                message: "Internal Server Error."
-              }
-            });
-          });
+        res.status(404).json({
+          success: false,
+          message: "User does not exist",
+          error: {
+            code: 404,
+            description: "User does not exist"
+          }
+        });
       }
     })
     .catch(error => {
@@ -152,6 +97,7 @@ module.exports.loginUser = async (req, res, next) => {
       });
     });
 };
+
 module.exports.loginAssistant = async (req, res, next) => {
   const { password, phone_number } = req.body;
 

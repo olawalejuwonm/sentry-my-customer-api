@@ -9,14 +9,10 @@ exports.storeAdminDashboard = async (req, res, next) => {
   const role = req.user.user_role;
 
   if (role != "store_admin") {
-    if (role == "store_assistant") {
-      var u = 1
-    } else {
-      return next();
-    }
+    return next();
   }
 
-  const storeAdmin = await storeAdminModel.findOne({ $or: [{ identifier: identifier, user_role: role }, {"assistants.phone_number": identifier, "assistants.user_role": role}]});
+  const storeAdmin = await storeAdminModel.findOne({ identifier });
   if (!storeAdmin) {
     return res.status(404).json({
       success: false,
@@ -41,7 +37,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.newCustomers = [];
     data.transactions = [];
     data.recentTransactions = [];
-    data.recentDebts = [];
+    data.recentDebts = []
 
     stores.forEach(store => {
       //increment customer count by number of customers in each store
@@ -64,6 +60,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
         );
       }
 
+
       customers.forEach(customer => {
         //push in transaction details for each customer
         if (customer.transactions.length != 0) {
@@ -74,27 +71,27 @@ exports.storeAdminDashboard = async (req, res, next) => {
           obj.transactions = customer.transactions.sort(compareTransactions);
           data.transactions.push(obj);
 
-          const transactions = customer.transactions;
+          const transactions = customer.transactions
           transactions.forEach(transaction => {
             //push in details of each transaction
-            let obj = {};
+            let obj ={};
             obj.storeName = store.store_name;
             obj.customerName = customer.name;
             obj.transaction = transaction;
             data.recentTransactions.push(obj);
 
-            if (
-              transaction.type.toLowerCase() == "debt" &&
-              transaction.status == false
-            ) {
+            if (transaction.type.toLowerCase() == "debt" &&
+            transaction.status == false) {
               //push in details of each debt
-              let obj = {};
+              let obj = {}
               obj.storeName = store.store_name;
               obj.customerName = customer.name;
               obj.debt = transaction;
               data.recentDebts.push(obj);
             }
-          });
+
+          })
+
         }
       });
     });
@@ -110,6 +107,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
       data: data
     });
   } catch (error) {
+  
     return res.status(500).json({
       success: false,
       message: "Internal server error",
