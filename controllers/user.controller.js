@@ -44,7 +44,15 @@ exports.validate = method => {
 exports.allStoreAssistant = (req, res) => {
   const id = req.user.phone_number;
 
-  User.findOne({ identifier: id })
+  User.findOne({
+    $or: [
+      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      {
+        "assistants.phone_number": req.user.phone_number,
+        "assistants.user_role": req.user.user_role
+      }
+    ]
+  })
     .then(user => {
       const storeAssistants = user.assistants;
       res.status(200).json({
@@ -139,7 +147,7 @@ exports.newStoreAssistant = async (req, res) => {
     name: name,
     phone_number: phone_number,
     email: email,
-    password: await bcrypt.hash(password, 10),
+    password: await bcrypt.hash(password, 10)
   };
 
   User.findOne({ identifier: id })
@@ -217,7 +225,15 @@ exports.getSingleStoreAssistant = (req, res) => {
   const id = req.user.phone_number;
   const storeAssistantId = req.params.assistant_id;
 
-  User.findOne({ identifier: id })
+  User.findOne({
+    $or: [
+      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      {
+        "assistants.phone_number": req.user.phone_number,
+        "assistants.user_role": req.user.user_role
+      }
+    ]
+  })
     .then(user => {
       const storeAssistants = user.assistants;
 
@@ -386,9 +402,9 @@ exports.deleteSingleStoreAssistant = (req, res) => {
 
 exports.updateStoreAdmin = (req, res) => {
   const identifier = req.user.phone_number;
-  let {first_name, last_name, email} = req.body;
+  let { first_name, last_name, email } = req.body;
   User.findOne({ identifier })
-    .then(async (user) => {
+    .then(async user => {
       user.local.first_name = first_name || user.local.first_name;
       user.local.last_name = last_name || user.local.last_name;
       user.local.email = email || user.local.email;
@@ -455,7 +471,7 @@ exports.updatePassword = (req, res) => {
             }
           });
 
-        bcrypt.compare(old_password, user.local.password, function (
+        bcrypt.compare(old_password, user.local.password, function(
           err,
           result
         ) {
@@ -490,13 +506,13 @@ exports.updatePassword = (req, res) => {
 };
 
 exports.forgot = async (req, res) => {
-  await crypto.randomBytes(20, function (err, buf) {
+  await crypto.randomBytes(20, function(err, buf) {
     let token = buf.toString("hex");
     if (err) {
       next(err);
     }
 
-    User.findOne({ identifier: req.body.phone_number }, function (err, user) {
+    User.findOne({ identifier: req.body.phone_number }, function(err, user) {
       if (err) {
         return res.status(404).json({
           success: "false",
@@ -552,7 +568,7 @@ exports.forgot = async (req, res) => {
               "\n\n" +
               "If you did not request this, please ignore this email and your password will remain unchanged.\n"
           };
-          smtpTransport.sendMail(mailOptions, function (err, info) {
+          smtpTransport.sendMail(mailOptions, function(err, info) {
             if (err) {
               return res.status(400).json({
                 success: "false",
@@ -602,7 +618,7 @@ exports.forgot = async (req, res) => {
               "\n\n" +
               "If you did not request this, please ignore this email and your password will remain unchanged.\n"
           };
-          smtpTransport.sendMail(mailOptions, function (err, info) {
+          smtpTransport.sendMail(mailOptions, function(err, info) {
             if (err) {
               return res.status(400).json({
                 success: "false",
@@ -652,7 +668,7 @@ exports.tokenreset = async (req, res) => {
       resetPasswordToken: req.params.token,
       resetPasswordExpires: { $gt: Date.now() }
     },
-    function (err, user) {
+    function(err, user) {
       if (err) {
         return res.status(400).json({
           success: "false",
@@ -677,7 +693,7 @@ exports.tokenreset = async (req, res) => {
       user.resetPasswordToken = undefined; //turn reset password to something not needed
       user.resetPasswordExpires = undefined;
 
-      user.save(function (err) {
+      user.save(function(err) {
         if (err) {
           return res.status(400).json({
             success: "false",
@@ -705,7 +721,7 @@ exports.tokenreset = async (req, res) => {
             user.email +
             " has just been changed.\n"
         };
-        smtpTransport.sendMail(mailOptions, function (err) {
+        smtpTransport.sendMail(mailOptions, function(err) {
           if (err) {
             return res.status(200).json({
               success: "false",
