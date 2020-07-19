@@ -104,6 +104,9 @@ module.exports.loginUser = async (req, res, next) => {
                             );
                             storeAssistant.api_token = apiToken;
                             user.save();
+                            var lm = storeAssistant
+                            storeAssistant.first_name = storeAssistant.name
+                            storeAssistant.last_name = storeAssistant.name
                             return res.status(200).json({
                               success: true,
                               message: "You're logged in successfully.",
@@ -111,7 +114,7 @@ module.exports.loginUser = async (req, res, next) => {
                                 statusCode: 200,
                                 message:
                                   "Store Assistant logged in successfully.",
-                                user: {local: storeAssistant, stores: [store], api_token: storeAssistant.api_token}
+                                user: {local: storeAssistant, _id: storeAssistant._id, stores: [store], api_token: storeAssistant.api_token}
                               }
                             });
                           } else {
