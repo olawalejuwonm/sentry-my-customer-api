@@ -37,7 +37,7 @@ module.exports.loginUser = async (req, res, next) => {
                 {
                   phone_number: userExist.identifier,
                   password: user.local.password,
-                  user_role: userExist.user_role
+                  user_role: userExist.local.user_role
                 },
                 process.env.JWT_KEY,
                 {
