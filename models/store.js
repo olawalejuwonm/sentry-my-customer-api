@@ -13,9 +13,6 @@ const storeSchema = new mongoose.Schema({
 	email: { type: String, default: "Not set" },
 	customers: [
 		Customer.schema
-	],
-	transactions: [
-		Transaction.schema
 	]
 }, { timestamp: true });
 

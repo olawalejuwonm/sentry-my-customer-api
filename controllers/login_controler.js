@@ -1,11 +1,11 @@
 const jwt = require("jsonwebtoken");
 const bCrypt = require("bcryptjs");
-const { body } = require('express-validator/check');
+const { body } = require("express-validator/check");
 
 const UserModel = require("../models/store_admin");
 const CustomerModel = require("../models/customer");
 
-exports.validate = (method) => {
+exports.validate = method => {
   switch (method) {
     case "login": {
       return [body("phone_number").isInt(), body("password")];
@@ -24,13 +24,13 @@ module.exports.loginUser = async (req, res, next) => {
   user.identifier = phone_number;
 
   //  Check if the users phone persists in the DB
-  await UserModel.findOne({ identifier: user.identifier })
-    .then((userExist) => {
+  await UserModel.findOne({ identifier: phone_number })
+    .then(userExist => {
       if (userExist) {
         //  Go ahead to compare the password match.
         bCrypt
           .compare(user.local.password, userExist.local.password)
-          .then((doPasswordMatch) => {
+          .then(doPasswordMatch => {
             if (doPasswordMatch) {
               //  Generate a login api_token for subsequent authentication.
               const apiToken = jwt.sign(
@@ -41,7 +41,7 @@ module.exports.loginUser = async (req, res, next) => {
                 },
                 process.env.JWT_KEY,
                 {
-                  expiresIn: "1h",
+                  expiresIn: "1h"
                 }
               );
               userExist.api_token = apiToken;
@@ -51,61 +51,118 @@ module.exports.loginUser = async (req, res, next) => {
                 message: "You're logged in successfully.",
                 data: {
                   statusCode: 200,
-                  user: userExist,
-                },
+                  user: userExist
+                }
               });
-            }
-            else {
+            } else {
               res.status(401).json({
                 success: false,
                 message: "Invalid Password.",
                 error: {
                   code: 401,
-                  description: "Invalid Password",
-                },
+                  description: "Invalid Password"
+                }
               });
             }
           })
-          .catch((error) => {
+          .catch(error => {
             res.status(500).json({
               success: false,
               message: error,
               error: {
                 code: 500,
-                description: error,
-              },
+                description: error
+              }
             });
           });
-      }
-      /*else if (userExist.local.phone_number == phone_number) {
-        res.status(200).json({
-          success: true,
-          message: "Phone number didn't match.",
-          data: {
-            code: 200,
-            description: "Phone number didn't match.",
-          },
-        });
-      }*/
-      else {
-        res.status(401).json({
+      } else {
+        res.status(404).json({
           success: false,
-          message: "Invalid phone number.",
+          message: "User does not exist",
           error: {
-            code: 401,
-            description: "Invalid phone number.",
-          },
+            code: 404,
+            description: "User does not exist"
+          }
         });
       }
     })
-    .catch((error) => {
+    .catch(error => {
       res.status(500).json({
         success: false,
         message: "An internal error occurred",
         error: {
           statusCode: 500,
-          description: error,
-        },
+          description: error
+        }
+      });
+    });
+};
+
+module.exports.loginAssistant = async (req, res, next) => {
+  const { password, phone_number } = req.body;
+
+  //console.log(password, phone_number);
+  await UserModel.findOne({
+    "assistants.phone_number": phone_number
+  })
+    .then(user => {
+      const storeAssistants = user.assistants;
+
+      storeAssistants.forEach(storeAssistant => {
+        if (storeAssistant.phone_number == phone_number) {
+          user.stores.forEach(store => {
+            if (store._id == storeAssistant.store_id) {
+              bCrypt
+                .compare(password, storeAssistant.password)
+                .then(doPasswordMatch => {
+                  if (doPasswordMatch) {
+                    const apiToken = jwt.sign(
+                      {
+                        phone_number: phone_number,
+                        password: password,
+                        user_role: storeAssistant.user_role
+                      },
+                      process.env.JWT_KEY,
+                      {
+                        expiresIn: "1h"
+                      }
+                    );
+                    storeAssistant.api_token = apiToken;
+                    user.save();
+                    return res.status(200).json({
+                      success: true,
+                      message: "You're logged in successfully.",
+                      data: {
+                        statusCode: 200,
+                        message: "Store Assistant retrieved successfully.",
+                        user: storeAssistant,
+                        store: store
+                      }
+                    });
+                  } else {
+                    return res.status(401).json({
+                      success: false,
+                      message: "Invalid Password.",
+                      error: {
+                        code: 401,
+                        description: "Invalid Password"
+                      }
+                    });
+                  }
+                });
+            }
+          });
+        }
+      });
+    })
+    .catch(error => {
+      return res.status(500).json({
+        success: "false",
+        message: "Internal Server Error.",
+        error: {
+          statusCode: 500,
+          message: "Internal Server Error."
+        }
       });
     });
 };
@@ -116,7 +173,7 @@ module.exports.loginCustomer = async (req, res, next) => {
 
   const reqBody = {
     phone_number: phone_number,
-    name: name,
+    name: name
   };
 
   //Validate the "reqBody" object using joiValidator function imported.
@@ -130,30 +187,30 @@ module.exports.loginCustomer = async (req, res, next) => {
       message: "An internal error occurred",
       error: {
         statusCode: 400,
-        description: error.details[0].message,
-      },
+        description: error.details[0].message
+      }
     });
   }
 
   //  Get instance of the
   const user = CustomerModel({
     name: value.name,
-    phone_number: value.phone_number,
+    phone_number: value.phone_number
   });
 
   //  Check if the users phone persists in the DB
   await CustomerModel.findOne({ phone_number: user.phone_number })
-    .then((userExist) => {
+    .then(userExist => {
       if (userExist) {
         //  Go ahead to generate a login api_token for subsequent authentication..
         const apiToken = jwt.sign(
           {
             phone_number: userExist.phone_number,
-            name: userExist.name,
+            name: userExist.name
           },
           process.env.JWT_KEY,
           {
-            expiresIn: "1h",
+            expiresIn: "1h"
           }
         );
 
@@ -164,19 +221,19 @@ module.exports.loginCustomer = async (req, res, next) => {
           user: {
             _id: userExist._id,
             phone_number: userExist.phone_number,
-            name: userExist.name,
-          },
+            name: userExist.name
+          }
         });
       } else {
         res.json({
           message: "Invalid phone number.",
-          Status: false,
+          Status: false
         });
       }
     })
-    .catch((error) => {
+    .catch(error => {
       res.status(500).json({
-        Error: error,
+        Error: error
       });
     });
 };

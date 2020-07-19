@@ -10,6 +10,11 @@ const { check, validationResult } = require('express-validator/check');
 // @access      Private
 router.get("/complaints", auth, complaintsController.findAll);
 
+// @route       GET /complaints/all
+// @desc        Super admin gets all complaints in the database
+// @access      Private
+router.get("/complaints/all", auth, complaintsController.getAllComplaintsInDB);
+
 // @route       GET /complaint/:complaintId
 // @desc        User gets single complaint
 // @access      Private
