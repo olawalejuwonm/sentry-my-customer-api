@@ -39,7 +39,8 @@ module.exports.registerUser = async (req, res, next) => {
   user.local.password = password;
 
   // TO REGISTER A SUPER ADMIN, USER ROLE IS NEEDED AS A REQUEST
-  user.local.user_role = user_role;
+  user.local.user_role = user_role || "store_admin";
+  
 
   user.api_token = token;
   user.identifier = phone_number;
