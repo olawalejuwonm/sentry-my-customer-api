@@ -1,28 +1,46 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const ComplaintFeedback = require("./complaint_feedbacks");
 
-const Complaint = new mongoose.Schema({
-  user_ref_id: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'user',
-    required: true
+const ComplaintSchema = new mongoose.Schema({
+  storeOwner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'store_admin',
   },
-  message: { 
-    type: String, 
-    required: true 
+  storeOwnerPhone: {
+    type: String,
   },
-  store_ref_code: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'store',
-    required: true
+  name: {
+    type: String,
+    // required: true,
+    // Name of Complainer
+  },
+  email: {
+    type: String,
+    // required: true,
+    // Email of complainer
+  },
+  subject: {
+    type: String,
+    required: true,
+    // Subject of Complaint
+  },
+  message: {
+    type: String,
+    required: true,
+    // Message the complainer sends 
   },
   status: {
-    type: String, default: "open"
+    type: String,
+    enum: ["New", "Pending", "Resolved", "Closed"],
+    default: "New"
+  },
+  feedbacks: [ComplaintFeedback.schema],
+  date: {
+    type: Date,
+    default: Date.now 
   }
-}, { timestamps: true });
+});
 
-Complaint.set('toJSON', {
-  virtuals: true
-})
 
-module.exports = mongoose.model('complaint', Complaint);
+module.exports = mongoose.model('complaint_form', ComplaintSchema);
