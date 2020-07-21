@@ -442,7 +442,7 @@ exports.markAsPaid = (req, res) => {
 let regex = /^\+(?:[0-9] ?){6,14}[0-9]$/;
 
 // Send reminder route
-exports.send = (req, res) => {
+/*exports.send = (req, res) => {
   const { transaction_id, message } = req.body;
 
   if (!transaction_id) {
@@ -467,7 +467,7 @@ exports.send = (req, res) => {
       }
     ]
   })
-    .then(user => {
+    .then( async user => {
       let found = false;
       user.stores.forEach(store => {
         store.customers.forEach(customer => {
@@ -499,10 +499,8 @@ exports.send = (req, res) => {
         if (to.charAt(0) == "0") {
           to = to.slice(1);
           to = "+234" + to;
-        } else if (to.charAt(0) == "2") {
-          to = "+" + to;
         } else {
-          to = "+234" + to;
+          to = "+" + to;
         }
       }
 
@@ -521,6 +519,7 @@ exports.send = (req, res) => {
               Message: "Invalid Phone Number"
             });
           } else {
+            user.save()
             res.status(200).json({
               success: true,
               Message: "Reminder sent",
@@ -547,6 +546,147 @@ exports.send = (req, res) => {
         }
       });
     });
+};*/
+
+exports.send = async (req, res) => {
+  try {
+    let to, store_name, amount, reminder_message;
+
+    const user = await UserModel.findOne({
+      $or: [
+        { identifier: req.user.phone_number, user_role: req.user.user_role },
+        {
+          "assistants.phone_number": req.user.phone_number,
+          "assistants.user_role": req.user.user_role
+        }
+      ]
+    });
+
+    const store = user.stores.find(store => store._id == req.params.store_id);
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: "Store not found",
+        data: {
+          statusCode: 404,
+          message: "Store not found"
+        }
+      });
+    }
+
+    const customer = store.customers.find(
+      customer => customer._id == req.params.customer_id
+    );
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+        data: {
+          statusCode: 404,
+          message: "Customer not found"
+        }
+      });
+    }
+
+    const transaction = customer.transactions.find(
+      transactions => transactions._id == req.params.transaction_id
+    );
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+        data: {
+          statusCode: 404,
+          message: "Transaction not found"
+        }
+      });
+    }
+
+    to = customer.phone_number;
+    amount = transaction.amount;
+    store_name = store.store_name;
+
+    if (req.body.message == undefined) {
+      reminder_message = `You have an unpaid debt of ${amount} Naira in ${store_name}`;
+    } else {
+      reminder_message = req.body.message;
+    }
+
+    const reminder = {
+      user_phone_number: req.user.phone_number,
+      customer_phone_number: customer.phone_number,
+      name: customer.name,
+      amount: transaction.amount,
+      ts_ref_id: transaction._id,
+      message: reminder_message,
+      status: "sending",
+      expected_pay_date: Date.now()
+    }
+
+    transaction.debts.push(reminder)
+    await user.save()
+
+    if (!regex.test(to)) {
+      if (to.charAt(0) == "0") {
+        to = to.slice(1);
+        to = "+234" + to;
+      } else {
+        to = "+" + to;
+      }
+    }
+
+    const sms = africastalking.SMS;
+    sms
+      .send({
+        to,
+        message: reminder_message,
+        enque: true
+      })
+      .then(response => {
+        if (response.SMSMessageData.Message == "Sent to 0/1 Total Cost: 0") {
+          res.status(200).json({
+            success: false,
+            Message: "Invalid Phone Number"
+          });
+        } else {
+          let reminderStatus = transaction.debts.find(debt => {
+            if(debt.expected_pay_date.getTime() === reminder.expected_pay_date) {
+              return true
+            }
+            return false
+          })
+          if(!reminderStatus) {
+            console.log("reminderStatus not found")
+          } else {
+            reminderStatus.status = "sent"
+            user.save()
+          }
+          res.status(200).json({
+            success: true,
+            Message: "Reminder sent",
+            details: {
+              to,
+              reminder_message
+            },
+            response
+          });
+        }
+      })
+      .catch(err => {
+        console.log(err);
+        res.send(err);
+      });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: {
+        statusCode: 500,
+        message: error
+      }
+    });
+  }
 };
 
 // Schedule reminder route
