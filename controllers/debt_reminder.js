@@ -554,10 +554,10 @@ exports.send = async (req, res) => {
 
     const user = await UserModel.findOne({
       $or: [
-        { identifier: req.user.phone_number, user_role: req.user.local.user_role },
+        { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
         {
           "assistants.phone_number": req.user.phone_number,
-          "assistants.user_role": req.user.local.user_role
+          "assistants.user_role": req.user.user_role
         }
       ]
     });
