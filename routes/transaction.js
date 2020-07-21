@@ -5,7 +5,7 @@ const bodyValidator = require("../util/body_validator");
 const auth = require("../auth/auth");
 
 // Create a new Transaction
-router.post("/transaction/new", auth, transactions.validate("create"), bodyValidator, transactions.create);
+router.post("/transaction/new", auth,  transactions.create);
 
 // Retrieve all Transactions
 router.get("/transaction/store/:store_id", auth, transactions.findAllStore);

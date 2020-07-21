@@ -139,7 +139,7 @@ exports.verify = async (req, res) => {
       message: "Something went wrong.",
       data: {
         statusCode: 500,
-        error: err,
+        error: err
       },
     });
   }
