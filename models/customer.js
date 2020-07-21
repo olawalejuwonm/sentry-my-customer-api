@@ -3,8 +3,9 @@ const mongoose = require("mongoose"),
 
 const customerSchema = new mongoose.Schema(
   {
+    store_ref_id: { type: mongoose.Schema.Types.ObjectId, ref: "store" },
     name: { type: String, required: true },
-    phone_number: { type: String, default: "Not set" },
+    phone_number: { type: String, required: true },
     email: { type: String, default: "Not set" },
   },
   { timestamps: true }
