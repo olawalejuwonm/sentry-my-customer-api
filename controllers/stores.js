@@ -1,53 +1,31 @@
 const Store = require("./../models/store");
 const UserModel = require("../models/store_admin");
+const { errorHandler } = require("./login_controler");
 
-exports.createStore = async (req, res, next) => {
+exports.createStore = async (req, res) => {
   if (req.body.store_name === "" || req.body.shop_address === "") {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
   try {
-    const id = req.user.phone_number;
-    const storeOwner = await UserModel.findOne({ identifier: id });
-    if (storeOwner) {
-      storeOwner.stores.push(
-        //   {
-        //   store_name: req.body.store_name,
-        //   shop_address: req.body.shop_address,
-        //   tagline: req.body.tagline,
-        //   phone_number:req.body.phone_number,
-        //   email:req.body.email,
-        // }
-        req.body
-      );
-      storeOwner
-        .save()
-        .catch(error => {
-          res.send(error);
-        })
-        .then(store => {
-          res.status(201).json({
-            success: true,
-            message: "Store added successfully",
-            data: {
-              statusCode: 201,
-              store: store
-            }
-          });
-        });
-    }
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-      error: {}
+    req.body.store_admin_ref = req.user._id;
+    const store = await Store.create(req.body);
+    return res.status(201).json({
+      success: true,
+      message: "Store added successfully",
+      data: {
+        statusCode: 201,
+        store,
+      },
     });
+  } catch (error) {
+    errorHandler(error, res);
   }
 };
 
-exports.getAll = async (req, res, next) => {
+exports.getAll = async (req, res) => {
   const id = req.user.phone_number;
   try {
     const User = await UserModel.findOne({ identifier: id });
@@ -57,8 +35,8 @@ exports.getAll = async (req, res, next) => {
         message: "could not User",
         error: {
           statusCode: 404,
-          message: "Could not find User"
-        }
+          message: "Could not find User",
+        },
       });
     } else {
       if (User.local.user_role !== "super_admin") {
@@ -67,15 +45,13 @@ exports.getAll = async (req, res, next) => {
           message: "Unauthorised, resource can only accessed by Super Admin",
           error: {
             statusCode: 401,
-            message: "Unauthorised, resource can only accessed by Super Admin"
-          }
+            message: "Unauthorised, resource can only accessed by Super Admin",
+          },
         });
       } else {
-        let stores = [];
-        let users = await UserModel.find({});
-        users.forEach(user => {
-          let store = user.stores;
-          stores.push(store);
+        let stores = await Store.find({}).populate({
+          path: "store_admin_ref",
+          select: "-local.password -identifier -google -facebook -api_token",
         });
 
         res.status(200).json({
@@ -84,217 +60,125 @@ exports.getAll = async (req, res, next) => {
           message: "Here are all your stores Super Admin",
           data: {
             statusCode: 200,
-            stores
-          }
+            stores,
+          },
         });
       }
     }
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      error: {}
-    });
+    errorHandler(error, res);
   }
 };
 
-exports.getAllStores = async (req, res, next) => {
+exports.getAllStores = async (req, res) => {
   //current user's id to find user
-  const id = req.user.phone_number;
   try {
-    const store_admin = await UserModel.findOne({
-      $or: [
-        { identifier: req.user.phone_number, user_role: req.user.user_role },
-        {
-          "assistants.phone_number": req.user.phone_number,
-          "assistants.user_role": req.user.user_role
-        }
-      ]
+    let stores = await Store.find({
+      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
     });
-    if (!store_admin) {
-      return res.status(404).json({
-        success: false,
-        message: "could not find store_admin",
-        error: {
-          statusCode: 404,
-          message: "Could not find store admin"
-        }
-      });
-    } else {
-      let stores = store_admin.stores;
-      res.status(200).json({
-        success: true,
-        result: stores.length,
-        message: "Here are all your stores",
-        data: {
-          statusCode: 200,
-          stores
-        }
-      });
-    }
+    res.status(200).json({
+      success: true,
+      result: stores.length,
+      message: "Here are all your stores",
+      data: {
+        statusCode: 200,
+        stores,
+      },
+    });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      error: {}
-    });
+    errorHandler(error, res);
   }
 };
 
-exports.getStore = async (req, res, next) => {
-  const identifier = req.user.phone_number;
-  let found = false;
-
-  UserModel.findOne({
-    $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
-  })
-    .then(result => {
-      let stores = result.stores;
-      stores.forEach(store => {
-        if (store._id == req.params.store_id) {
-          found = true;
-          return res.status(200).json({
-            success: true,
-            message: "Operation successful",
-            data: {
-              store
-            }
-          });
-        }
-      });
-      if (found == false) {
-        res.status(404).json({
-          success: false,
-          Message: "Store not found",
-          error: {
-            statusCode: 404,
-            message: "Store not found"
-          }
-        });
-      }
-    })
-    .catch(err => {
+exports.getStore = async (req, res) => {
+  try {
+    const store = await Store.findOne({
+      _id: req.params.store_id,
+      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+    });
+    if (!store) {
       return res.status(404).json({
         success: false,
-        Message: "User not found",
+        Message: "Store not found",
         error: {
           statusCode: 404,
-          message: err
-        }
-      });
-    });
-};
-
-exports.updateStore = async (req, res, next) => {
-  try {
-    const id = req.user.phone_number;
-    const content = req.body;
-    const store_id = req.params.store_id;
-    const storeOwner = await UserModel.findOne({ identifier: id });
-    if (storeOwner) {
-      const stores = storeOwner.stores;
-      stores.forEach(store => {
-        if (store._id.equals(store_id)) {
-          store.shop_address = req.body.shop_address;
-          store.store_name = req.body.store_name;
-          store.tagline = req.body.tagline;
-          store.email = req.body.email;
-          store.phone_number = req.body.phone_number;
-          storeOwner
-            .save()
-            .then(success => {
-              res.status(201).json({
-                success: true,
-                message: "Store updated successfully",
-                data: {
-                  statusCode: 201,
-                  store: store
-                }
-              });
-            })
-            .catch(error => {
-              res.status(401).json({
-                success: false,
-                message: "Failed to update store",
-                error: {
-                  statusCode: 401,
-                  message: error.message
-                }
-              });
-            });
-        }
-      });
-    } else {
-      res.status(404).json({
-        success: false,
-        message: "User not found",
-        error: {
-          statusCode: 404,
-          message: "User not found"
-        }
+          message: "Store not found",
+        },
       });
     }
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-      error: {}
+    return res.status(200).json({
+      success: true,
+      message: "Operation successful",
+      data: {
+        store,
+      },
     });
+  } catch (error) {
+    errorHandler(error, res);
+  }
+};
+
+exports.updateStore = async (req, res) => {
+  try {
+    let store = await Store.findOne({
+      _id: req.params.store_id,
+      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+    });
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        Message: "Store not found",
+        error: {
+          statusCode: 404,
+          message: "Store not found",
+        },
+      });
+    }
+    store.store_name = req.body.store_name || store.store_name;
+    store.phone_number = req.body.phone_number || store.phone_number;
+    store.tagline = req.body.tagline || store.tagline;
+    store.email = req.body.email || store.email;
+    store.shop_address = req.body.shop_address || store.shop_address;
+    store = await store.save();
+    res.status(201).json({
+      success: true,
+      message: "Store updated successfully",
+      data: {
+        statusCode: 201,
+        store,
+      },
+    });
+  } catch (error) {
+    errorHandler(error, res);
   }
 };
 
 exports.deleteStore = async (req, res, next) => {
   try {
-    const id = req.user.phone_number;
-    const storeOwner = await UserModel.findOne({ identifier: id });
-    if (storeOwner) {
-      const stores = storeOwner.stores.filter(
-        store => store._id != req.params.store_id
-      );
-      storeOwner.stores = stores;
-      storeOwner
-        .save()
-        .catch(error => {
-          res.status(500).json({
-            success: false,
-            message: "Internal error",
-            error: {
-              statusCode: 500,
-              message: "Could delete store due to an internal error"
-            }
-          });
-        })
-        .then(store => {
-          res.status(200).json({
-            success: true,
-            message: "Store deleted successfully",
-            data: {
-              statusCode: 200,
-              store: store
-            }
-          });
-        });
-    } else {
-      res.status(404).json({
+    let store = await Store.findOne({
+      _id: req.params.store_id,
+      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+    });
+    if (!store) {
+      return res.status(404).json({
         success: false,
-        message: "User not found",
+        Message: "Store not found",
         error: {
           statusCode: 404,
-          message: "User not found"
-        }
+          message: "Store not found",
+        },
       });
     }
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-      error: {}
+    await store.remove();
+    res.status(200).json({
+      success: true,
+      message: "Store deleted successfully",
+      data: {
+        statusCode: 200,
+        store,
+      },
     });
+  } catch (error) {
+    errorHandler(error, res);
   }
 };
