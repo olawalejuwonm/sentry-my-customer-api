@@ -198,7 +198,115 @@ exports.superAdminDashboard = async (req, res) => {
   }
 };
 
-exports.storeAssistantDashboard = (req, res) => {};
+exports.storeAssistantDashboard = async (req, res) => {
+  const phone_number = req.user.phone_number;
+  const data ={};
+  
+  const storeAdmin = await storeAdminModel.findOne({
+    "assistants.phone_number": phone_number
+  })
+  if (!storeAdmin) {
+    return res.status(404).json({
+      success: false,
+      message: "Store Admin not found",
+      error: {
+        statusCode: 404,
+        message: "Store Admin not found"
+      }
+    });
+  }
+  try {
+    const assistant = storeAdmin.assistants.find(assistant => assistant.phone_number == phone_number);
+    data.name = assistant.name;
+    data.email = assistant.email;
+    data.phone_number = assistant.phone_number;
+    
+    const store_id = assistant.store_id;
+    if (!store_id) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assistant does not belong to a store',
+        error:{
+          statusCode: '',
+          message: 'Assistant does not belong to a store'
+        }
+      })
+    }
+    const assistantStore = storeAdmin.stores.find(store => store._id == store_id);
+    data.storeName = assistantStore.store_name;
+    data.storeAddress = assistantStore.shop_address
+    data.customerCount = 0; 
+    data.transactionCount = 0;
+    data.recentTransactions =[]
+    data.debtCount = 0;
+    data.debtAmount = 0;
+    data.revenueCount = 0;
+    data.revenueAmount = 0;
+    data.receivablesCount = 0;
+    data.receivablesAmount = 0;
+    assistantStore.customers.forEach(customer => {
+      data.customerCount += 1;
+      customer.transactions.forEach(transaction => {
+        if (transaction.assistant_inCharge == assistant._id) {
+          data.transactionCount += 1;
+
+          let obj = {};
+          obj.customerName = customer.name;
+          obj.storeName = assistantStore.store_name;
+          obj.transaction = transaction;
+          data.recentTransactions.push(obj);
+
+          if (transaction.type.toLowerCase() == 'debt') {
+            data.debtCount += 1;
+            try { data.debtAmount += parseFloat(transaction.amount); 
+            } catch (error) {
+              data.debtAmount += 0
+            }
+          }
+          if (transaction.type.toLowerCase() == 'debt' &&  transaction.status == true) {
+            data.revenueCount += 1;
+            try { data.revenueAmount += parseFloat(transaction.amount); 
+            } catch (error) {
+              data.revenueAmount += 0
+            } 
+          }
+          if (transaction.type.toLowerCase() == 'paid') {
+            data.revenueCount += 1;
+            try { data.revenueAmount += parseFloat(transaction.amount); 
+            } catch (error) {
+              data.revenueAmount += 0
+            }
+          }
+          if (transaction.type.toLowerCase() == 'receivables') {
+            data.receivablesCount += 1;
+            try { data.receivablesAmount +=  parseFloat(transaction.amount); 
+            } catch (error) {
+              data.receivablesAmount += 0
+            }
+          }
+        }
+      })
+    })
+    //sort transactions by time
+    data.recentTransactions.sort(compareRecentTransactions)
+
+    return res.status(200).json({
+      success: true,
+      message: "Store Assistant dashboard data",
+      data: data
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: error.message,
+      error:{
+        statusCode: 500,
+        message: error.message
+      }
+    })
+  }
+  
+};
 
 exports.customerDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
