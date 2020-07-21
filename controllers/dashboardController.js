@@ -9,10 +9,22 @@ exports.storeAdminDashboard = async (req, res, next) => {
   const role = req.user.user_role;
 
   if (role != "store_admin") {
-    return next();
+    if (role == "store_assistant") {
+      var u = 1;
+    } else {
+      return next();
+    }
   }
 
-  const storeAdmin = await storeAdminModel.findOne({ identifier });
+  const storeAdmin = await storeAdminModel.findOne({
+    $or: [
+      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      {
+        "assistants.phone_number": req.user.phone_number,
+        "assistants.user_role": req.user.user_role
+      }
+    ]
+  });
   if (!storeAdmin) {
     return res.status(404).json({
       success: false,

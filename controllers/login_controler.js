@@ -37,7 +37,7 @@ module.exports.loginUser = async (req, res, next) => {
                 {
                   phone_number: userExist.identifier,
                   password: user.local.password,
-                  user_role: userExist.user_role
+                  user_role: userExist.local.user_role
                 },
                 process.env.JWT_KEY,
                 {
@@ -76,14 +76,84 @@ module.exports.loginUser = async (req, res, next) => {
             });
           });
       } else {
-        res.status(404).json({
-          success: false,
-          message: "User does not exist",
-          error: {
-            code: 404,
-            description: "User does not exist"
-          }
-        });
+        try {
+          UserModel.findOne({
+            "assistants.phone_number": phone_number
+          })
+            .then(user => {
+              const storeAssistants = user.assistants;
+
+              storeAssistants.forEach(storeAssistant => {
+                if (storeAssistant.phone_number == phone_number) {
+                  user.stores.forEach(store => {
+                    if (store._id == storeAssistant.store_id) {
+                      bCrypt
+                        .compare(password, storeAssistant.password)
+                        .then(doPasswordMatch => {
+                          if (doPasswordMatch) {
+                            const apiToken = jwt.sign(
+                              {
+                                phone_number: phone_number,
+                                password: password,
+                                user_role: storeAssistant.user_role
+                              },
+                              process.env.JWT_KEY,
+                              {
+                                expiresIn: "1h"
+                              }
+                            );
+                            storeAssistant.api_token = apiToken;
+                            user.save();
+                            var lm = storeAssistant
+                            storeAssistant.first_name = storeAssistant.name
+                            storeAssistant.last_name = storeAssistant.name
+                            storeAssistant.user_role = "store_admin"
+                            return res.status(200).json({
+                              success: true,
+                              message: "You're logged in successfully.",
+                              data: {
+                                statusCode: 200,
+                                message:
+                                  "Store Assistant logged in successfully.",
+                                user: {local: storeAssistant, _id: storeAssistant._id, stores: [store], api_token: storeAssistant.api_token}
+                              }
+                            });
+                          } else {
+                            return res.status(401).json({
+                              success: false,
+                              message: "Invalid Password.",
+                              error: {
+                                code: 401,
+                                description: "Invalid Password"
+                              }
+                            });
+                          }
+                        });
+                    }
+                  });
+                }
+              });
+            })
+            .catch(error => {
+              return res.status(500).json({
+                success: "false",
+                message: "Internal Server Error.",
+                error: {
+                  statusCode: 500,
+                  message: "Internal Server Error."
+                }
+              });
+            });
+        } catch {
+          res.status(404).json({
+            success: false,
+            message: "User does not exist",
+            error: {
+              code: 404,
+              description: "User does not exist"
+            }
+          });
+        }
       }
     })
     .catch(error => {
