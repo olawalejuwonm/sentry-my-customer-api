@@ -121,7 +121,7 @@ exports.getAll = async (req, res) => {
 
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
@@ -172,7 +172,7 @@ exports.getStoreDebt = (req, res) => {
 
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
@@ -222,7 +222,7 @@ exports.getById = (req, res) => {
 
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
@@ -276,7 +276,7 @@ exports.markAsPaid = (req, res) => {
 
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
@@ -460,7 +460,7 @@ exports.send = (req, res) => {
 
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
@@ -568,7 +568,7 @@ exports.schedule = (req, res) => {
 
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
+      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
