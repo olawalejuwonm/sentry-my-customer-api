@@ -4,6 +4,11 @@ const mongoose = require("mongoose"),
 
 const storeSchema = new mongoose.Schema(
   {
+    store_admin_ref: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "store_admin",
+    },
     store_name: { type: String, required: true },
     phone_number: {
       type: String,

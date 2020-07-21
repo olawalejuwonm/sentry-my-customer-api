@@ -74,7 +74,7 @@ module.exports.registerCustomer = async (req, res) => {
     if (customer) {
       return res.status(409).json({
         message: "Phone number already taken. Please use another phone number.",
-        status: false,
+        success: false,
         error: {
           statusCode: 409,
         },
@@ -82,7 +82,7 @@ module.exports.registerCustomer = async (req, res) => {
     }
     customer = await CustomerModel.create({ phone_number, name, email });
     return res.status(201).json({
-      status: true,
+      success: true,
       message: "Customer registered successfully...",
       Customer: {
         _id: customer._id,

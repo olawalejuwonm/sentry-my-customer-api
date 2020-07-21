@@ -21,6 +21,10 @@ module.exports.errorHandler = (error, res) => {
     message = "request missing required fields";
     status = 422;
   }
+  if (error.name && error.name.toLowerCase().includes("casterror")) {
+    message = "invalid id";
+    status = 400;
+  }
   return res.status(status).json({
     success: false,
     message,
@@ -34,9 +38,11 @@ module.exports.errorHandler = (error, res) => {
     },
   });
 };
+
+//  TODO: Change expiry back to 1h
 module.exports.signToken = (data) =>
   jwt.sign(data, process.env.JWT_KEY, {
-    expiresIn: "1h",
+    expiresIn: "24h",
   });
 const loginAssistant = async ({ identifier, password }, res) => {
   let assistant = await AssistantModel.findOne({ phone_number: identifier });
@@ -64,7 +70,7 @@ const loginAssistant = async ({ identifier, password }, res) => {
     });
   }
   return res.status(401).json({
-    status: false,
+    success: false,
     message: "invalid credentials",
     error: {
       statusCode: 401,
@@ -134,7 +140,7 @@ module.exports.loginCustomer = async (req, res, next) => {
         res.status(200).json({
           message: "You're logged in successfully.",
           api_token: apiToken,
-          status: true,
+          success: true,
           user: {
             _id: userExist._id,
             phone_number: userExist.phone_number,
@@ -144,7 +150,7 @@ module.exports.loginCustomer = async (req, res, next) => {
       } else {
         res.json({
           message: "Invalid phone number.",
-          status: false,
+          success: false,
         });
       }
     })
