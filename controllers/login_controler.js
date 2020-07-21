@@ -51,11 +51,7 @@ const loginAssistant = async ({ identifier, password }, res) => {
       phone_number: assistant.phone_number,
       password: password,
       user_role: assistant.user_role,
-<<<<<<< HEAD
       _id: assistant._id
-=======
-      _id: assistant._id,
->>>>>>> 6a07ae7e78d2e196967a96c470b87f296ffe78f7
     });
     assistant.api_token = apiToken;
     assistant = await assistant.save();
