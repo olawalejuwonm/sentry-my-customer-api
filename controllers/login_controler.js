@@ -104,10 +104,10 @@ module.exports.loginUser = async (req, res, next) => {
                             );
                             storeAssistant.api_token = apiToken;
                             user.save();
-                            var lm = storeAssistant
+                            // var lm = storeAssistant
                             storeAssistant.first_name = storeAssistant.name
                             storeAssistant.last_name = storeAssistant.name
-                            storeAssistant.user_role = "store_admin"
+                            // storeAssistant.user_role = "store_admin"
                             return res.status(200).json({
                               success: true,
                               message: "You're logged in successfully.",
