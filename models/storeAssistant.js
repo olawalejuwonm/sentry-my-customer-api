@@ -1,17 +1,24 @@
-const mongoose = require("mongoose")
+const { Schema, model } = require("mongoose");
 
 //schema for store assistant
-const storeAssistantSchema = new mongoose.Schema({
-	name: { type: String, required: true},
-	first_name: { type: String},
-	last_name: { type: String},
-	phone_number: { type: String, required: true },
-	email: { type: String,},
-	password: { type: String, default: "password" },
-	store_id: {type: String},
-	is_active: { type: Boolean, default: 1 },
-	api_token: { type: String },
-	user_role: { type: String, default: "store_assistant" }
-}, { timestamp: true });
+const storeAssistantSchema = new Schema(
+  {
+    store_admin_ref: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "store_admin",
+    },
+    name: { type: String, required: true },
+    first_name: { type: String },
+    last_name: { type: String },
+    phone_number: { type: String, required: true },
+    email: { type: String },
+    password: { type: String, default: "password" },
+    is_active: { type: Boolean, default: 1 },
+    api_token: { type: String },
+    user_role: { type: String, default: "store_assistant" },
+  },
+  { timestamp: true }
+);
 
-module.exports = mongoose.model("storeAssistant", storeAssistantSchema);
+module.exports = model("storeAssistant", storeAssistantSchema);

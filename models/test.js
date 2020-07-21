@@ -40,10 +40,6 @@ const teststoreAdminSchema = new mongoose.Schema(
         default: "store_admin",
       },
     },
-
-    assistants: [StoreAssistant.schema],
-    stores: [Store.schema],
-    complaints: [Complaints.schema], // To take in Complaints and save to DB
     api_token: {
       type: String,
     },
