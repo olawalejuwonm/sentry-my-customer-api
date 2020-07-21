@@ -165,6 +165,10 @@ exports.superAdminDashboard = async (req, res) => {
     data.storesCount = 0;
     data.assistantsCount = 0;
     data.customerCount = 0;
+    data.totalDebt = 0;
+    data.transactionCount = 0;
+    data.totalTransactionAmount = 0;
+    data.transactions = [];
 
     data.usersCount = 0;
 
@@ -174,13 +178,38 @@ exports.superAdminDashboard = async (req, res) => {
       data.assistantsCount += user.assistants.length;
       stores.forEach(store => {
         let customers = store.customers;
+
         data.customerCount += customers.length;
+
+        customers.forEach(customer => {
+          let transactions = customer.transactions;
+          data.transactionCount = transactions.length;
+
+          transactions.forEach(transaction => {
+            let obj = {};
+            obj.storeName = store.store_name;
+            obj.customerName = customer.name;
+            obj.transaction = transaction;
+            data.totalTransactionAmount += transaction.total_amount;
+
+            data.transactions.push(obj);
+
+            let debts = transaction.debts;
+            debts.forEach(debt => {
+              data.totalDebt += debt.amount;
+            });
+          });
+        });
       });
     });
 
     // the total number of users should be = storeAdmin + customers + storeAssistants
     data.usersCount =
       data.storeAdminCount + data.customerCount + data.assistantsCount;
+
+    // sort transactions
+    data.transactions.sort(compareRecentTransactions);
+
     res.status(200).json({
       success: true,
       message: "Dashboard data",

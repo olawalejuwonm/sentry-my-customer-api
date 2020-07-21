@@ -6,7 +6,7 @@ const UserModel = require("../models/store_admin");
 const AssistantModel = require("../models/storeAssistant");
 const CustomerModel = require("../models/customer");
 
-exports.validate = (method) => {
+exports.validate = method => {
   switch (method) {
     case "login": {
       return [body("phone_number").isInt(), body("password")];
@@ -33,16 +33,16 @@ module.exports.errorHandler = (error, res) => {
       message: error.message,
       description: {
         stack: error.stack,
-        ...error,
-      },
-    },
+        ...error
+      }
+    }
   });
 };
 
 //  TODO: Change expiry back to 1h
-module.exports.signToken = (data) =>
+module.exports.signToken = data =>
   jwt.sign(data, process.env.JWT_KEY, {
-    expiresIn: "24h",
+    expiresIn: "24h"
   });
 const loginAssistant = async ({ identifier, password }, res) => {
   let assistant = await AssistantModel.findOne({ phone_number: identifier });
@@ -51,7 +51,7 @@ const loginAssistant = async ({ identifier, password }, res) => {
       phone_number: assistant.phone_number,
       password: password,
       user_role: assistant.user_role,
-      _id: assistant._id,
+      _id: assistant._id
     });
     assistant.api_token = apiToken;
     assistant = await assistant.save();
@@ -64,17 +64,17 @@ const loginAssistant = async ({ identifier, password }, res) => {
         user: {
           local: assistant,
           _id: assistant._id,
-          api_token: apiToken,
-        },
-      },
+          api_token: apiToken
+        }
+      }
     });
   }
   return res.status(401).json({
     success: false,
     message: "invalid credentials",
     error: {
-      statusCode: 401,
-    },
+      statusCode: 401
+    }
   });
 };
 //  Login User
@@ -87,7 +87,7 @@ module.exports.loginUser = async (req, res) => {
         phone_number: user.identifier,
         password: user.local.password,
         user_role: user.local.user_role,
-        _id: user._id,
+        _id: user._id
       });
       user.api_token = apiToken;
       user = await user.save();
@@ -96,8 +96,8 @@ module.exports.loginUser = async (req, res) => {
         message: "You're logged in successfully.",
         data: {
           statusCode: 200,
-          user,
-        },
+          user
+        }
       });
     }
     await loginAssistant({ identifier, password }, res);
@@ -123,18 +123,18 @@ module.exports.loginCustomer = async (req, res, next) => {
   //  Get instance of the
   const user = CustomerModel({
     name,
-    phone_number,
+    phone_number
   });
 
   //  Check if the users phone persists in the DB
   await CustomerModel.findOne({ phone_number: user.phone_number })
-    .then((userExist) => {
+    .then(userExist => {
       if (userExist) {
         //  Go ahead to generate a login api_token for subsequent authentication..
         const apiToken = module.exports.signToken({
           phone_number: userExist.phone_number,
           name: userExist.name,
-          _id: userExist._id,
+          _id: userExist._id
         });
 
         res.status(200).json({
@@ -144,17 +144,17 @@ module.exports.loginCustomer = async (req, res, next) => {
           user: {
             _id: userExist._id,
             phone_number: userExist.phone_number,
-            name: userExist.name,
-          },
+            name: userExist.name
+          }
         });
       } else {
         res.json({
           message: "Invalid phone number.",
-          success: false,
+          success: false
         });
       }
     })
-    .catch((error) => {
+    .catch(error => {
       module.exports.errorHandler(error, res);
     });
 };
