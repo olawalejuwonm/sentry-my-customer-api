@@ -1,6 +1,8 @@
 const Store = require("./../models/store");
 const UserModel = require("../models/store_admin");
+const CustomerModel = require("../models/customer");
 const { errorHandler } = require("./login_controler");
+const TransactionModel = require("../models/transaction");
 
 exports.createStore = async (req, res) => {
   if (req.body.store_name === "" || req.body.shop_address === "") {
@@ -53,6 +55,19 @@ exports.getAll = async (req, res) => {
           path: "store_admin_ref",
           select: "-local.password -identifier -google -facebook -api_token",
         });
+        stores = Object.values(
+          stores.reduce((acc, cur) => {
+            if (acc[cur.store_admin_ref._id])
+              return {
+                ...acc,
+                [cur.store_admin_ref._id]: [
+                  ...acc[cur.store_admin_ref._id],
+                  cur,
+                ],
+              };
+            return { ...acc, [cur.store_admin_ref._id]: [cur] };
+          }, {})
+        );
 
         res.status(200).json({
           success: true,
@@ -92,9 +107,8 @@ exports.getAllStores = async (req, res) => {
 
 exports.getStore = async (req, res) => {
   try {
-    const store = await Store.findOne({
+    let store = await Store.findOne({
       _id: req.params.store_id,
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
     });
     if (!store) {
       return res.status(404).json({
@@ -106,6 +120,16 @@ exports.getStore = async (req, res) => {
         },
       });
     }
+    let customers = await CustomerModel.find({ store_ref_id: store._id });
+    customers = await Promise.all(
+      customers.map(async (customer) => {
+        const transactions = await TransactionModel.find({
+          customer_ref_id: customer._id,
+        });
+        return { ...customer.toObject(), transactions };
+      })
+    );
+    store = { tagline: "Not Set", ...store.toObject(), customers };
     return res.status(200).json({
       success: true,
       message: "Operation successful",
@@ -122,7 +146,6 @@ exports.updateStore = async (req, res) => {
   try {
     let store = await Store.findOne({
       _id: req.params.store_id,
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
     });
     if (!store) {
       return res.status(404).json({
@@ -157,7 +180,6 @@ exports.deleteStore = async (req, res, next) => {
   try {
     let store = await Store.findOne({
       _id: req.params.store_id,
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
     });
     if (!store) {
       return res.status(404).json({

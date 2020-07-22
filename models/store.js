@@ -14,7 +14,7 @@ const storeSchema = new mongoose.Schema(
       type: String,
       Default: "Not set",
     },
-    tagline: { type: String, Default: "Not set" },
+    tagline: { type: String, Default: "Not set", required: true },
     shop_address: { type: String, required: true },
     email: { type: String, default: "Not set" },
     assistant: {

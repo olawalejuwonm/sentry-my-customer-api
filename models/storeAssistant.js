@@ -16,6 +16,7 @@ const storeAssistantSchema = new Schema(
     password: { type: String, default: "password" },
     is_active: { type: Boolean, default: 1 },
     api_token: { type: String },
+    store_id: { type: Schema.Types.ObjectId, required: true, ref: "store" },
     user_role: { type: String, default: "store_assistant" },
   },
   { timestamp: true }

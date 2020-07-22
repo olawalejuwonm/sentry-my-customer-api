@@ -45,11 +45,7 @@ exports.validate = (method) => {
 // Get all Users.
 exports.allStoreAssistant = async (req, res) => {
   try {
-    const assistants = await StoreAssistant.find({
-      store_admin_ref: req.user._id,
-    })
-      .select("-password")
-      .exec();
+    const assistants = await StoreAssistant.find({}).select("-password").exec();
     return res.status(200).json({
       success: "true",
       message: "Store assistants retrieved successfully.",
@@ -137,6 +133,7 @@ exports.newStoreAssistant = async (req, res) => {
       store_admin_ref: req.user._id,
       name,
       phone_number,
+      store_id,
       email,
       password: await bcrypt.hash(password, 10),
     });
@@ -146,7 +143,7 @@ exports.newStoreAssistant = async (req, res) => {
       data: {
         status: 201,
         message: "StoreAssistant created successfully.",
-        store_assistant: assistant,
+        store_assistant,
       },
     });
   } catch (error) {
@@ -159,7 +156,6 @@ exports.getSingleStoreAssistant = async (req, res) => {
   try {
     const store_assistant = await StoreAssistant.findOne({
       _id: req.params.assistant_id,
-      store_admin_ref: req.user._id,
     })
       .select("-password")
       .exec();
@@ -188,7 +184,7 @@ exports.getSingleStoreAssistant = async (req, res) => {
 
 //  Update Single Store Assistant with assistant_id.
 exports.updateSingleStoreAssistant = async (req, res) => {
-  const { name, phone_number, email } = req.body;
+  const { name, phone_number, email, store_id } = req.body;
   try {
     let store_assistant = await StoreAssistant.findOne({
       _id: req.params.assistant_id,
@@ -206,6 +202,7 @@ exports.updateSingleStoreAssistant = async (req, res) => {
     store_assistant.name = name || store_assistant.name;
     store_assistant.phone_number = phone_number || store_assistant.phone_number;
     store_assistant.email = email || store_assistant.email;
+    store_assistant.store_id = store_id || store_assistant.store_id;
     store_assistant = await store_assistant.save();
     return res.status(201).json({
       success: true,

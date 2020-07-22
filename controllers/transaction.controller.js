@@ -1,6 +1,7 @@
 const Transaction = require("../models/transaction");
 const UserModel = require("../models/store_admin");
 const StoreModel = require("../models/store");
+const Customer = require("../models/customer");
 const { body } = require("express-validator/check");
 const { errorHandler } = require("./login_controler");
 
@@ -36,22 +37,12 @@ exports.validate = (method) => {
 };
 
 // Create and Save a new Transaction
-exports.create = async (req, res, next) => {
+exports.create = async (req, res) => {
   try {
-    const identifier = req.user.phone_number;
-    const user = await UserModel.findOne({ identifier });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-        data: {
-          statusCode: 404,
-          message: "User not found",
-        },
-      });
-    }
-
-    const store = user.stores.find((store) => store._id == req.body.store_id);
+    let store = await StoreModel.findOne({
+      _id: req.body.store_id,
+      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+    });
     if (!store) {
       return res.status(404).json({
         success: false,
@@ -62,26 +53,10 @@ exports.create = async (req, res, next) => {
         },
       });
     }
-
-    if (req.body.assistant_inCharge) {
-      const assistant = user.assistants.find(
-        (assistant) => assistant._id == req.body.assistant_inCharge
-      );
-      if (!assistant) {
-        return res.status(404).json({
-          success: false,
-          message: "assistant not found",
-          data: {
-            statusCode: 404,
-            message: "assistant not found",
-          },
-        });
-      }
-    }
-
-    const customer = store.customers.find(
-      (customer) => customer._id == req.body.customer_id
-    );
+    let customer = await Customer.findOne({
+      _id: req.body.customer_id,
+      store_ref_id: store._id,
+    });
     if (!customer) {
       return res.status(404).json({
         success: false,
@@ -92,38 +67,28 @@ exports.create = async (req, res, next) => {
         },
       });
     }
-
-    customer.transactions.push({
+    const trans = await Transaction.create({
       store_ref_id: req.body.store_id,
       customer_ref_id: req.body.customer_id,
       amount: req.body.amount,
       interest: req.body.interest || null,
       total_amount: req.body.total_amount || null,
-      assistant_inCharge: req.body.assistant_inCharge || null,
+      ass_ref_id: store.assistant,
+      assistant_inCharge: store.assistant,
       description: req.body.description || "Not set",
       type: req.body.type,
       status: req.body.status || false,
       expected_pay_date: req.body.expected_pay_date || null,
     });
-
-    await user.save();
-
-    res.status(201).json({
+    return res.status(200).json({
       success: true,
       message: "Transaction saved",
       data: {
-        user,
+        transaction: trans,
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      data: {
-        statusCode: 500,
-        message: error,
-      },
-    });
+    errorHandler(error, res);
   }
 };
 
@@ -241,8 +206,7 @@ exports.findAllStore = async (req, res) => {
         }
       }
     });
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Transactions",
       data: {
@@ -251,14 +215,7 @@ exports.findAllStore = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      data: {
-        statusCode: 500,
-        message: error,
-      },
-    });
+    errorHandler(error, res);
   }
 };
 

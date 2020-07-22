@@ -58,6 +58,26 @@ app.set("view engine", "ejs");
 app.get("/", (req, res) => {
   res.redirect("/docs");
 });
+app.use((req, res, next) => {
+  if (req.body.phone_number)
+    req.body.phone_number = req.body.phone_number.replace("234", "0");
+  console.log(
+    "body: ",
+    req.body,
+    "\nparam: ",
+    req.params,
+    "\nquery: ",
+    req.query,
+    "\nurl: ",
+    req.originalUrl
+  );
+  let __send = res.json;
+  res.json = (data) => {
+    console.log(data);
+    __send.bind(res)(data);
+  };
+  next();
+});
 //middleware to enable us to send otp and a success message at the same time without errors
 app.use(function (req, res, next) {
   let _send = res.send;
