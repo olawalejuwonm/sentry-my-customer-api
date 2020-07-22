@@ -70,6 +70,7 @@ exports.create = async (req, res) => {
     const trans = await Transaction.create({
       store_ref_id: req.body.store_id,
       customer_ref_id: req.body.customer_id,
+      store_admin_ref: store.store_admin_ref,
       amount: req.body.amount,
       interest: req.body.interest || null,
       total_amount: req.body.total_amount || null,
@@ -163,55 +164,18 @@ exports.findAll = async (req, res) => {
 
 exports.findAllStore = async (req, res) => {
   try {
-    const identifier = req.user.phone_number;
-    const user = await UserModel.findOne({
+    let transactions = await Transaction.find({
       $or: [
-        { identifier: req.user.phone_number, user_role: req.user.user_role },
-        {
-          "assistants.phone_number": req.user.phone_number,
-          "assistants.user_role": req.user.user_role,
-        },
+        { assistant_inCharge: req.user._id },
+        { store_admin_ref: req.user._id },
       ],
-    });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-        data: {
-          statusCode: 404,
-          message: "User not found",
-        },
-      });
-    }
-
-    const store = user.stores.find((store) => store._id == req.params.store_id);
-    if (!store) {
-      return res.status(404).json({
-        success: false,
-        message: "Store not found",
-        data: {
-          statusCode: 404,
-          message: "Store not found",
-        },
-      });
-    }
-
-    let transactions = [];
-    store.customers.forEach((customer) => {
-      if (customer.transactions.length > 0) {
-        if (transactions.length > 0) {
-          transactions = customer.transactions.concat(transactions);
-        } else {
-          transactions = customer.transactions;
-        }
-      }
     });
     return res.status(200).json({
       success: true,
       message: "Transactions",
       data: {
         statusCode: 200,
-        transactions: transactions,
+        transactions,
       },
     });
   } catch (error) {
@@ -219,7 +183,7 @@ exports.findAllStore = async (req, res) => {
   }
 };
 
-exports.findAllUser = async (req, res) => {
+exports.findAllAdmin = async (req, res) => {
   try {
     const user = await UserModel.findOne({ _id: req.user._id });
     if (!user || user.local.user_role !== "super_admin") {
@@ -245,7 +209,7 @@ exports.findAllUser = async (req, res) => {
   }
 };
 
-exports.findAllAdmin = async (req, res) => {
+exports.findAllUser = async (req, res) => {
   try {
     const identifier = req.user.phone_number;
     const admin = await UserModel.findOne({ identifier });

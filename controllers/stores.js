@@ -88,9 +88,14 @@ exports.getAll = async (req, res) => {
 exports.getAllStores = async (req, res) => {
   //current user's id to find user
   try {
-    let stores = await Store.find({
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
-    });
+    let stores;
+    if (req.user.user_role === "super_admin") {
+      stores = await Store.find();
+    } else {
+      stores = await Store.find({
+        $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+      });
+    }
     res.status(200).json({
       success: true,
       result: stores.length,
@@ -191,6 +196,8 @@ exports.deleteStore = async (req, res, next) => {
         },
       });
     }
+    await TransactionModel.deleteMany({ store_ref_id: store._id });
+    await CustomerModel.deleteMany({ store_ref_id: store._id });
     await store.remove();
     res.status(200).json({
       success: true,

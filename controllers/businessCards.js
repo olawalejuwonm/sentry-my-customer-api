@@ -1,5 +1,6 @@
-const UserStore = require("../models/user_store");
+const Store = require("../models/store");
 const UserModel = require("../models/store_admin");
+const {} = require("./login_controler");
 
 module.exports = () => async (req, res) => {
   try {
@@ -42,8 +43,8 @@ module.exports = () => async (req, res) => {
       sucess: true,
       message: "Your business cards:",
       data: {
-        business_cards: data
-      }
+        business_cards: data,
+      },
     });
   } catch (error) {
     //  Log error to console for maintenace by developers
@@ -52,12 +53,12 @@ module.exports = () => async (req, res) => {
     //  Send server error response and optional dev if in dev mode
     res.status(500).json({
       success: false,
-      message: 'An internal server error occured',
+      message: "An internal server error occured",
       status: 500,
       error: {
         statusCode: 500,
-        message: error.message
-      }
+        message: error.message,
+      },
     });
   }
 };

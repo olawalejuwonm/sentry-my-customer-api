@@ -12,7 +12,7 @@ const storeSchema = new mongoose.Schema(
     store_name: { type: String, required: true },
     phone_number: {
       type: String,
-      Default: "Not set",
+      default: "Not set",
     },
     tagline: { type: String, Default: "Not set", required: true },
     shop_address: { type: String, required: true },

@@ -15,10 +15,17 @@ exports.validate = (method) => {
 exports.create = async (req, res) => {
   const { phone_number, email, name, store_id } = req.body;
   try {
-    let store = await StoreModel.findOne({
-      _id: store_id,
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
-    });
+    let store;
+    if ((req.user.user_role = "super_admin")) {
+      store = await StoreModel.findOne({
+        _id: store_id,
+      });
+    } else {
+      store = await StoreModel.findOne({
+        _id: store_id,
+        $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+      });
+    }
     if (!store) {
       return res.status(404).json({
         success: false,
@@ -192,9 +199,14 @@ exports.deleteById = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const stores = await StoreModel.find({
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
-    });
+    let stores;
+    if (req.user.user_role === "super_admin") {
+      stores = await StoreModel.find({});
+    } else {
+      stores = await StoreModel.find({
+        $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+      });
+    }
     const customer = await Promise.all(
       stores.map(async (store) => {
         const customers = await Customer.find({ store_ref_id: store._id });

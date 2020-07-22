@@ -45,7 +45,14 @@ exports.validate = (method) => {
 // Get all Users.
 exports.allStoreAssistant = async (req, res) => {
   try {
-    const assistants = await StoreAssistant.find({}).select("-password").exec();
+    let assistants;
+    if (req.user.user_role === "super_admin") {
+      assitants = await StoreAssistant.find({}).select("-password").exec();
+    } else {
+      assistants = await StoreAssistant.find({ store_admin_ref: req.user._id })
+        .select("-password")
+        .exec();
+    }
     return res.status(200).json({
       success: "true",
       message: "Store assistants retrieved successfully.",
@@ -107,12 +114,12 @@ exports.newStoreAssistant = async (req, res) => {
       _id: store_id,
     });
     if (!store) {
-      return res.status(200).json({
+      return res.status(404).json({
         success: false,
-        message: "User does not exist.",
+        message: "Store does not exist.",
         data: {
-          status: 200,
-          message: "User does not exist.",
+          status: 404,
+          message: "Store does not exist.",
         },
       });
     }
@@ -137,6 +144,8 @@ exports.newStoreAssistant = async (req, res) => {
       email,
       password: await bcrypt.hash(password, 10),
     });
+    store.assistant = store_assistant._id;
+    await store.save();
     return res.status(201).json({
       success: true,
       message: "StoreAssistant created successfully.",
