@@ -160,6 +160,89 @@ exports.getById = (req, res) => {
     });
 };
 
+exports.findOneAdmin = async (req, res) => {
+  try {
+    const identifier = req.user.phone_number;
+    const admin = await UserModel.findOne({ identifier });
+    if (!admin || admin.local.user_role !== "super_admin") {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: {
+          statusCode: 404,
+          message: "User not found"
+        }
+      });
+    }
+
+    const user = await UserModel.findOne({
+      stores: { 
+        $elemMatch: { 
+          _id: req.params.storeId,
+          customers: { 
+            $elemMatch: {
+              _id: req.params.customerId
+            }
+          }
+        }
+      } 
+    });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+        data: {
+          statusCode: 404,
+          message: "Transaction not found"
+        }
+      });
+    }
+
+    const store = user.stores.find(store => store._id == req.params.storeId);
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: "Store not found",
+        data: {
+          statusCode: 404,
+          message: "Store not found"
+        }
+      });
+    }
+
+    const customer = store.customers.find(
+      customer => customer._id == req.params.customerId
+    );
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+        data: {
+          statusCode: 404,
+          message: "Customer not found"
+        }
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Customer",
+      data: {
+        customer: customer
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrongr",
+      data: {
+        statusCode: 500,
+        message: error
+      }
+    });
+  }
+};
+
 exports.updateById = (req, res) => {
   const identifier = req.user.phone_number;
   const customerId = req.params.customerId;
