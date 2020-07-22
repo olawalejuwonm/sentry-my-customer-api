@@ -9,21 +9,29 @@ exports.storeAdminDashboard = async (req, res, next) => {
   const role = req.user.user_role;
 
   if (role != "store_admin") {
-    if (role == "store_assistant") {
-      var u = 1;
-    } else {
-      return next();
-    }
+    // if (role == "store_assistant") {
+    //   var u = 1;
+    // } else {
+    //   return next();
+    // }
+    res.status(401).send({
+      success: false,
+      message: 'User not authorized to access store admin dashboard',
+      error:{
+        statusCode: 401,
+        message: 'User not authorized to access store admin dashboard'
+      }
+    })
   }
 
-  const storeAdmin = await storeAdminModel.findOne({
-    $or: [
-      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
+  const storeAdmin = await storeAdminModel.findOne({ identifier
+    // $or: [
+    //   { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+    //   {
+    //     "assistants.phone_number": req.user.phone_number,
+    //     "assistants.user_role": req.user.user_role
+    //   }
+    // ]
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -50,6 +58,13 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.transactions = [];
     data.recentTransactions = [];
     data.recentDebts = [];
+    data.debtCount = 0;
+    data.debtAmount = 0;
+    data.revenueCount = 0;
+    data.revenueAmount = 0;
+    data.receivablesCount = 0;
+    data.receivablesAmount = 0;
+    data.amountForCurrentMonth = 0;
 
     stores.forEach(store => {
       //increment customer count by number of customers in each store
@@ -91,10 +106,15 @@ exports.storeAdminDashboard = async (req, res, next) => {
             obj.transaction = transaction;
             data.recentTransactions.push(obj);
 
-            if (
-              transaction.type.toLowerCase() == "debt" &&
-              transaction.status == false
-            ) {
+            if (transaction.type.toLowerCase() == "debt" && transaction.status == false) {
+              //increment debt count
+              data.debtCount += 1;
+              //increment debt amount
+              try {
+                data.debtAmount += parseFloat(transaction.amount);
+              } catch (error) {
+                data.debtAmount += 0;
+              }
               //push in details of each debt
               let obj = {};
               obj.storeName = store.store_name;
@@ -102,6 +122,52 @@ exports.storeAdminDashboard = async (req, res, next) => {
               obj.debt = transaction;
               data.recentDebts.push(obj);
             }
+
+            if (transaction.type.toLowerCase() == "debt" && transaction.status == true) {
+              data.revenueCount += 1;
+              let transactionDate = new Date(transaction.createdAt)
+              if (date.getMonth() == transactionDate.getMonth() ) {
+                try {
+                  data.amountForCurrentMonth += parseFloat(transaction.amount)
+                } catch (error) {
+                  data.amountForCurrentMonth += 0
+                }
+              }
+              
+              try {
+                data.revenueAmount += parseFloat(transaction.amount);
+              } catch (error) {
+                data.revenueAmount += 0;
+              } 
+            }
+
+            if (transaction.type.toLowerCase() == "paid") {
+              data.revenueCount += 1;
+              let transactionDate = new Date(transaction.createdAt)
+              if (date.getMonth() == transactionDate.getMonth() ) {
+                try {
+                  data.amountForCurrentMonth += parseFloat(transaction.amount)
+                } catch (error) {
+                  data.amountForCurrentMonth += 0
+                }
+              }
+
+              try {
+                data.revenueAmount += parseFloat(transaction.amount);
+              } catch (error) {
+                data.revenueAmount += 0;
+              }
+            }
+
+            if (transaction.type.toLowerCase() == "receivables") {
+              data.receivablesCount += 1;
+              try {
+                data.receivablesAmount  += parseFloat(transaction.amount);
+              } catch (error) {
+                data.receivablesAmount += 0;
+              }
+            }
+
           });
         }
       });
@@ -123,7 +189,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
       message: "Internal server error",
       error: {
         statusCode: 500,
-        message: error
+        message: error.message
       }
     });
   }
@@ -256,7 +322,7 @@ exports.storeAssistantDashboard = async (req, res) => {
           obj.transaction = transaction;
           data.recentTransactions.push(obj);
 
-          if (transaction.type.toLowerCase() == 'debt') {
+          if (transaction.type.toLowerCase() == 'debt' && transaction.status == false) {
             data.debtCount += 1;
             try { data.debtAmount += parseFloat(transaction.amount); 
             } catch (error) {
