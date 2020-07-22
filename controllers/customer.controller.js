@@ -12,13 +12,22 @@ exports.validate = method => {
 };
 
 exports.create = async (req, res) => {
-  const identifier = req.user.phone_number;
-
   const { phone_number, email, name, store_id } = req.body;
 
   //get current user's id and add a new customer to it
   try {
-    UserModel.findOne({ identifier })
+    UserModel.findOne({
+      $or: [
+        {
+          identifier: req.user.phone_number,
+          "local.user_role": req.user.user_role
+        },
+        {
+          "assistants.phone_number": req.user.phone_number,
+          "assistants.user_role": req.user.user_role
+        }
+      ]
+    })
       .then(user => {
         if (user.stores.length == 0) {
           return res.status(403).json({
@@ -101,7 +110,10 @@ exports.getById = (req, res) => {
   let customers;
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+      {
+        identifier: req.user.phone_number,
+        "local.user_role": req.user.user_role
+      },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
@@ -269,7 +281,10 @@ exports.getAll = async (req, res) => {
   const identifier = req.user.phone_number;
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+      {
+        identifier: req.user.phone_number,
+        "local.user_role": req.user.user_role
+      },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role

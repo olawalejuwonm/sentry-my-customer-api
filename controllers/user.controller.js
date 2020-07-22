@@ -179,6 +179,7 @@ exports.newStoreAssistant = async (req, res) => {
       stores.forEach(store => {
         if (store._id == store_id) {
           newStoreAssistantData.store_id = store._id;
+          store.assistants.push(newStoreAssistantData);
         }
       });
 
@@ -224,7 +225,6 @@ exports.newStoreAssistant = async (req, res) => {
 exports.getSingleStoreAssistant = (req, res) => {
   const id = req.user.phone_number;
   const storeAssistantId = req.params.assistant_id;
-
   User.findOne({
     $or: [
       { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
