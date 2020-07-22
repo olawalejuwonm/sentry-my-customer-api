@@ -45,11 +45,14 @@ exports.validate = (method) => {
 // Get all Users.
 exports.allStoreAssistant = async (req, res) => {
   try {
-    const assistants = await StoreAssistant.find({
-      store_admin_ref: req.user._id,
-    })
-      .select("-password")
-      .exec();
+    let assistants;
+    if (req.user.user_role === "super_admin") {
+      assitants = await StoreAssistant.find({}).select("-password").exec();
+    } else {
+      assistants = await StoreAssistant.find({ store_admin_ref: req.user._id })
+        .select("-password")
+        .exec();
+    }
     return res.status(200).json({
       success: "true",
       message: "Store assistants retrieved successfully.",
@@ -106,17 +109,22 @@ exports.newStoreAdmin = async (req, res) => {
 exports.newStoreAssistant = async (req, res) => {
   const { name, email, password, phone_number, store_id } = req.body;
   try {
-    let store = await Store.findOne({
-      store_admin_ref: req.user._id,
-      _id: store_id,
-    });
+    let store;
+    if (req.user.user_role === "super_admin") {
+      store = await Store.findOne({ _id: store_id });
+    } else {
+      store = await Store.findOne({
+        store_admin_ref: req.user._id,
+        _id: store_id,
+      });
+    }
     if (!store) {
-      return res.status(200).json({
+      return res.status(404).json({
         success: false,
-        message: "User does not exist.",
+        message: "Store does not exist.",
         data: {
-          status: 200,
-          message: "User does not exist.",
+          status: 404,
+          message: "Store does not exist.",
         },
       });
     }
@@ -137,16 +145,18 @@ exports.newStoreAssistant = async (req, res) => {
       store_admin_ref: req.user._id,
       name,
       phone_number,
+      store_id,
       email,
       password: await bcrypt.hash(password, 10),
     });
+    await store.save();
     return res.status(201).json({
       success: true,
       message: "StoreAssistant created successfully.",
       data: {
         status: 201,
         message: "StoreAssistant created successfully.",
-        store_assistant: assistant,
+        store_assistant,
       },
     });
   } catch (error) {
@@ -159,7 +169,6 @@ exports.getSingleStoreAssistant = async (req, res) => {
   try {
     const store_assistant = await StoreAssistant.findOne({
       _id: req.params.assistant_id,
-      store_admin_ref: req.user._id,
     })
       .select("-password")
       .exec();
@@ -188,7 +197,7 @@ exports.getSingleStoreAssistant = async (req, res) => {
 
 //  Update Single Store Assistant with assistant_id.
 exports.updateSingleStoreAssistant = async (req, res) => {
-  const { name, phone_number, email } = req.body;
+  const { name, phone_number, email, store_id } = req.body;
   try {
     let store_assistant = await StoreAssistant.findOne({
       _id: req.params.assistant_id,
@@ -206,6 +215,7 @@ exports.updateSingleStoreAssistant = async (req, res) => {
     store_assistant.name = name || store_assistant.name;
     store_assistant.phone_number = phone_number || store_assistant.phone_number;
     store_assistant.email = email || store_assistant.email;
+    store_assistant.store_id = store_id || store_assistant.store_id;
     store_assistant = await store_assistant.save();
     return res.status(201).json({
       success: true,

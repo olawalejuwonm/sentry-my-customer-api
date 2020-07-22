@@ -5,6 +5,7 @@ const DebtReminder = new mongoose.Schema(
     store_admin_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "store_admin",
+      required: true,
     },
     customer_phone_number: {
       type: String,
@@ -18,6 +19,10 @@ const DebtReminder = new mongoose.Schema(
     amount: {
       type: Number,
       required: true,
+    },
+    assistant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "storeAssistant",
     },
     store_ref_id: { type: mongoose.Schema.Types.ObjectId, ref: "store" },
     trans_ref_id: { type: mongoose.Schema.Types.ObjectId, ref: "transaction" },

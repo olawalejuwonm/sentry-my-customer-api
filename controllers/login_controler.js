@@ -62,8 +62,7 @@ const loginAssistant = async ({ identifier, password }, res) => {
         statusCode: 200,
         message: "Store Assistant logged in successfully.",
         user: {
-          local: assistant,
-          _id: assistant._id,
+          ...assistant.toObject(),
           api_token: apiToken,
         },
       },
@@ -100,7 +99,13 @@ module.exports.loginUser = async (req, res) => {
         },
       });
     }
-    await loginAssistant({ identifier, password }, res);
+    return res.status(401).json({
+      success: false,
+      message: "invalid credentials",
+      error: {
+        statusCode: 401,
+      },
+    });
   } catch (error) {
     module.exports.errorHandler(error, res);
   }
