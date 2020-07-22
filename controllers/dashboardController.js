@@ -7,9 +7,27 @@ const transactionModel = require("../models/transaction");
 
 exports.storeAdminDashboard = async (req, res, next) => {
   const identifier = req.user.phone_number;
+  const role = req.user.user_role;
+
+  if (role != "store_admin") {
+    if (role == "store_assistant") {
+      var u = 1;
+    } else {
+      return next();
+    }
+  }
 
   const storeAdmin = await storeAdminModel.findOne({
-    identifier: req.user.phone_number
+    $or: [
+      {
+        identifier: req.user.phone_number,
+        "local.user_role": req.user.user_role
+      },
+      {
+        "assistants.phone_number": req.user.phone_number,
+        "assistants.user_role": req.user.user_role
+      }
+    ]
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -25,7 +43,6 @@ exports.storeAdminDashboard = async (req, res, next) => {
   try {
     const data = {};
     const stores = await Stores.find({ store_admin_ref: storeAdmin._id });
-    console.log(stores.length);
     const assistants = await storeAssistantModel.find({
       store_admin_ref: storeAdmin._id
     });
