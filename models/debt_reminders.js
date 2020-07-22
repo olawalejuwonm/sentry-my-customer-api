@@ -24,7 +24,10 @@ const DebtReminder = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "storeAssistant",
     },
-    store_ref_id: { type: mongoose.Schema.Types.ObjectId, ref: "store" },
+    store_ref_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "mycustomer_store",
+    },
     trans_ref_id: { type: mongoose.Schema.Types.ObjectId, ref: "transaction" },
     message: { type: String, required: true },
     status: { type: String, required: true },
