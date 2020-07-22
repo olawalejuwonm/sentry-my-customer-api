@@ -1,4 +1,4 @@
-const userModel = require("../models/user");
+const Debts = require("../models/debt_reminders");
 const storeAdminModel = require("../models/store_admin");
 const storeAssistantModel = require("../models/storeAssistant");
 const Stores = require("../models/store");
@@ -168,48 +168,30 @@ exports.superAdminDashboard = async (req, res) => {
   }
   try {
     let users = await storeAdminModel.find({});
+    let stores = await Stores.find({});
+    let assistants = await storeAssistantModel.find({});
+    let customers = await customerModel.find({});
+    let transactions = await transactionModel.find({});
+    let debts = await Debts.find({});
 
     let data = {};
     data.storeAdminCount = users.length;
-    data.storesCount = 0;
-    data.assistantsCount = 0;
-    data.customerCount = 0;
+    data.storesCount = stores.length;
+    data.assistantsCount = assistants.length;
+    data.customerCount = customers.length;
     data.totalDebt = 0;
-    data.transactionCount = 0;
+    data.transactionCount = transactions.length;
     data.totalTransactionAmount = 0;
-    data.transactions = [];
+    // data.transactions = [];
 
     data.usersCount = 0;
 
-    users.forEach(user => {
-      let stores = user.stores;
-      data.storesCount += stores.length;
-      data.assistantsCount += user.assistants.length;
-      stores.forEach(store => {
-        let customers = store.customers;
+    transactions.forEach(transaction => {
+      data.totalTransactionAmount += transaction.total_amount;
+    });
 
-        data.customerCount += customers.length;
-
-        customers.forEach(customer => {
-          let transactions = customer.transactions;
-          data.transactionCount = transactions.length;
-
-          transactions.forEach(transaction => {
-            let obj = {};
-            obj.storeName = store.store_name;
-            obj.customerName = customer.name;
-            obj.transaction = transaction;
-            data.totalTransactionAmount += transaction.total_amount;
-
-            data.transactions.push(obj);
-
-            let debts = transaction.debts;
-            debts.forEach(debt => {
-              data.totalDebt += debt.amount;
-            });
-          });
-        });
-      });
+    debts.forEach(debt => {
+      data.totalDebt += debt.amount;
     });
 
     // the total number of users should be = storeAdmin + customers + storeAssistants
@@ -217,7 +199,7 @@ exports.superAdminDashboard = async (req, res) => {
       data.storeAdminCount + data.customerCount + data.assistantsCount;
 
     // sort transactions
-    data.transactions.sort(compareRecentTransactions);
+    // data.transactions.sort(compareRecentTransactions);
 
     res.status(200).json({
       success: true,
