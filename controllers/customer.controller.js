@@ -323,3 +323,56 @@ exports.getAll = async (req, res) => {
       });
     });
 };
+
+exports.findAllAdmin = async (req, res) => {
+  try {
+    const identifier = req.user.phone_number;
+    const admin = await UserModel.findOne({ identifier });
+    if (!admin || admin.local.user_role !== "super_admin") {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: {
+          statusCode: 404,
+          message: "User not found"
+        }
+      });
+    }
+
+    const users = await UserModel.find();
+    if (!users) {
+      return res.status(404).json({
+        success: false,
+        message: "Users not found",
+        data: {
+          statusCode: 404,
+          message: "Users not found"
+        }
+      });
+    }
+
+    let customers = [];
+    users.forEach(user => {
+      user.stores.forEach(store => {
+        customers = customers.concat(store.customers);
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Customers",
+      data: {
+        customers: customers
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: {
+        statusCode: 500,
+        message: error
+      }
+    });
+  }
+};
