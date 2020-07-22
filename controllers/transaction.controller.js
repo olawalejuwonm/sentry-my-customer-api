@@ -342,7 +342,7 @@ exports.findAllAdmin = async (req, res) => {
   try {
     const identifier = req.user.phone_number;
     const admin = await UserModel.findOne({ identifier });
-    if (!admin || admin.user_role !== "super_admin") {
+    if (!admin || admin.local.user_role !== "super_admin") {
       return res.status(404).json({
         success: false,
         message: "User not found",
