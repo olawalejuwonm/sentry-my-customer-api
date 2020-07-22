@@ -10,10 +10,11 @@ const cron = require("node-cron");
 const transaction = require("../models/transaction");
 const africastalking = require("africastalking")({
   apiKey: process.env.AFRICASTALKING_API_KEY,
-  username: process.env.AFRICASTALKING_USERNAME
+  username: process.env.AFRICASTALKING_USERNAME,
 });
+const { errorHandler } = require("./login_controler");
 
-exports.validate = method => {
+exports.validate = (method) => {
   switch (method) {
     case "body": {
       return [
@@ -23,150 +24,61 @@ exports.validate = method => {
         body("status").isLength({ min: 3 }),
         body("pay_date").isLength({ min: 3 }),
         body("transaction_id").optional(),
-        body("name")
-          .isString()
-          .isLength({ min: 1 }),
-        body("amount").isLength({ min: 3 })
+        body("name").isString().isLength({ min: 1 }),
+        body("amount").isLength({ min: 3 }),
       ];
     }
   }
 };
 
-// // exports.create = async (req, res) => {
-// //   // Add new message
-// //   let transaction_id = req.body.transaction_id || req.params.transaction_id;
-// //   let identifier = req.user.phone_number;
-// //   const {
-// //     store_name,
-// //     customer_phone_number,
-// //     message,
-// //     status,
-// //     pay_date,
-// //     amount,
-// //     name,
-// //   } = req.body;
-
-// //   if (!transaction_id) {
-// //     res.status(500).json({
-// //       sucess: false,
-// //       message: "Missing fields",
-// //       error: {
-// //         statusCode: 500,
-// //         message: "transaction_id is required",
-// //       },
-// //     });
-// //   }
-
-// //   try {
-// //     UserModel.findOne({ identifier })
-// //       .then((user) => {
-// //         let store = user.stores.find((store) => store.store_name == store_name);
-// //         let customer = store.customers.find(
-// //           (customer) => customer.phone_number === customer_phone_number
-// //         );
-// //         let transaction = customer.transactions.find(
-// //           (transaction) => transaction._id == transaction_id
-// //         );
-
-// //         const newDebt = {
-// //           user_phone_number: identifier,
-// //           customer_phone_number,
-// //           amount: amount,
-// //           ts_ref_id: transaction._id,
-// //           message: message,
-// //           status: status,
-// //           expected_pay_date: new Date(pay_date),
-// //           name: name,
-// //         };
-
-// //         transaction.debts.push(newDebt);
-
-// //         user.save().then((result) => {
-// //           res.status(200).json({
-// //             success: true,
-// //             message: "Debt created successfully",
-// //             data: {
-// //               statusCode: 200,
-// //               debt: transaction.debts[transaction.debts.length - 1],
-// //             },
-// //           });
-// //         });
-// //       })
-// //       .catch((err) => {
-// //         res.status(404).json({
-// //           sucess: false,
-// //           message: "User not found or some body parameters are not correct",
-// //           error: {
-// //             statusCode: 404,
-// //             message: err.message,
-// //           },
-// //         });
-// //       });
-// //   } catch (err) {
-// //     res.status(500).json({
-// //       sucess: false,
-// //       message: "Some error occurred while creating debt",
-// //       error: {
-// //         statusCode: 500,
-// //         message: err.message,
-// //       },
-// //     });
-// //   }
-// // };
-
 // Find all transaction with stat
 exports.getAll = async (req, res) => {
-  const identifier = req.user.phone_number;
-  let allDebts = [];
-
-  UserModel.findOne({
-    $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
-  })
-    .then(user => {
-      let stores = user.stores;
-      //search loop to get all debt
-      stores.forEach(store => {
-        store.customers.forEach(customer => {
-          customer.transactions.forEach(transaction => {
-            if (
-              transaction.type.toLowerCase() == "debt" &&
-              transaction.status == false
-            ) {
-              allDebts.push(transaction);
-            }
-          });
-        });
+  try {
+    let debts;
+    if (req.user.user_role === "super_admin") {
+      debts = await Debt.find({});
+    } else {
+      debts = await Debt.find({
+        $or: [{ store_admin_id: req.user._id }, { assistant: req.user._id }],
       });
-
-      return res.status(200).json({
-        success: true,
-        message: "All Debts",
-        data: {
-          statusCode: 200,
-          debts: allDebts
-        }
-      });
-    })
-    .catch(err => {
-      res.status(500).json({
-        sucess: false,
-        message: "Couldn't find user or some server error occurred",
-        error: {
-          statusCode: 500,
-          message: err.message
-        }
-      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "All Debts",
+      data: {
+        statusCode: 200,
+        debts,
+      },
     });
+  } catch (error) {
+    errorHandler(error, res);
+  }
 };
 
 //Gets the debt of a particular store
-exports.getStoreDebt = (req, res) => {
+exports.getStoreDebt = async (req, res) => {
+  try {
+    let debts;
+    if (req.user.user_role === "super_admin") {
+      debts = await Debt.find({ store_ref_id: req.params.storeId });
+    } else {
+      debts = await Debt.find({
+        store_ref_id: req.params.storeId,
+        $or: [{ store_admin_id: req.user._id }, { assistant: req.user._id }],
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "All Debts",
+      data: {
+        statusCode: 200,
+        debts,
+      },
+    });
+  } catch (error) {
+    errorHandler(error, res);
+  }
   const identifier = req.user.phone_number;
   let allDebts = [];
 
@@ -175,16 +87,16 @@ exports.getStoreDebt = (req, res) => {
       { identifier: req.user.phone_number, user_role: req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
+        "assistants.user_role": req.user.user_role,
+      },
+    ],
   })
-    .then(user => {
+    .then((user) => {
       //search loop to get the debt of a store passed in the params
-      user.stores.forEach(store => {
+      user.stores.forEach((store) => {
         if (store._id == req.params.storeId) {
-          store.customers.forEach(customer => {
-            customer.transactions.forEach(transaction => {
+          store.customers.forEach((customer) => {
+            customer.transactions.forEach((transaction) => {
               if (
                 transaction.type.toLowerCase() == "debt" &&
                 transaction.status == false
@@ -201,73 +113,53 @@ exports.getStoreDebt = (req, res) => {
         message: "All Debts",
         data: {
           statusCode: 200,
-          debts: allDebts
-        }
+          debts: allDebts,
+        },
       });
     })
-    .catch(err => {
+    .catch((err) => {
       res.status(500).json({
         sucess: false,
         message: "Couldn't find user or some server error occurred",
         error: {
           statusCode: 500,
-          message: err.message
-        }
+          message: err.message,
+        },
       });
     });
 };
 
-exports.getById = (req, res) => {
-  let identifier = req.user.phone_number;
-
-  UserModel.findOne({
-    $or: [
-      { identifier: req.user.phone_number, user_role: req.user.user_role },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
-  })
-    .then(user => {
-      let found = false;
-      user.stores.forEach(store => {
-        store.customers.forEach(customer => {
-          customer.transactions.forEach(transaction => {
-            if (transaction._id == req.params.transactionId) {
-              found = true;
-              return res.status(200).json({
-                success: true,
-                message: "found",
-                data: {
-                  statusCode: 200,
-                  debt: transaction
-                }
-              });
-            }
-          });
-        });
+exports.getById = async (req, res) => {
+  try {
+    let debt;
+    if (req.user.user_role === "super_admin") {
+      debt = await Debt.find({ _id: req.params.transactionId });
+    } else {
+      debt = await Debt.find({
+        _id: req.params.transactionId,
+        $or: [{ store_admin_id: req.user._id }, { assistant: req.user._id }],
       });
-      if (found == false) {
-        return res.status(404).json({
-          success: false,
-          message: "Transaction not found",
-          data: {
-            statusCode: 404
-          }
-        });
-      }
-    })
-    .catch(err => {
-      res.status(500).json({
-        sucess: false,
-        message: "Couldn't find user or some server error occurred",
-        error: {
-          statusCode: 500,
-          message: err.message
-        }
+    }
+    if (!debt) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+        data: {
+          statusCode: 404,
+        },
       });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "found",
+      data: {
+        statusCode: 200,
+        debt,
+      },
     });
+  } catch (error) {
+    errorHandler(error, res);
+  }
 };
 
 //Route to set the status of a debt to paid
@@ -279,17 +171,17 @@ exports.markAsPaid = (req, res) => {
       { identifier: req.user.phone_number, user_role: req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
+        "assistants.user_role": req.user.user_role,
+      },
+    ],
   })
-    .then(user => {
+    .then((user) => {
       let stores = user.stores;
-      stores.forEach(store => {
+      stores.forEach((store) => {
         let customers = store.customers;
-        customers.forEach(customer => {
+        customers.forEach((customer) => {
           let transactions = customer.transactions;
-          transactions.forEach(transaction => {
+          transactions.forEach((transaction) => {
             if (transaction._id == req.params.transactionId) {
               transaction["status"] = true;
             }
@@ -298,34 +190,34 @@ exports.markAsPaid = (req, res) => {
       });
       user
         .save()
-        .then(result => {
+        .then((result) => {
           return res.status(201).json({
             sucess: true,
             message: "Operation Successful",
             data: {
-              result
-            }
+              result,
+            },
           });
         })
-        .catch(err => {
+        .catch((err) => {
           res.status(500).json({
             sucess: false,
             message: "Unable to change status",
             error: {
               statusCode: 500,
-              message: err.message
-            }
+              message: err.message,
+            },
           });
         });
     })
-    .catch(err => {
+    .catch((err) => {
       res.status(500).json({
         sucess: false,
         message: "Some server error occurred",
         error: {
           statusCode: 500,
-          message: err.message
-        }
+          message: err.message,
+        },
       });
     });
 };
@@ -451,8 +343,8 @@ exports.send = (req, res) => {
       Message: "Please enter a valid transaction_id",
       error: {
         errorCode: "400",
-        Message: "Please enter a valid transaction_id"
-      }
+        Message: "Please enter a valid transaction_id",
+      },
     });
   }
   let identifier = req.user.phone_number;
@@ -463,15 +355,15 @@ exports.send = (req, res) => {
       { identifier: req.user.phone_number, user_role: req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
+        "assistants.user_role": req.user.user_role,
+      },
+    ],
   })
-    .then(user => {
+    .then((user) => {
       let found = false;
-      user.stores.forEach(store => {
-        store.customers.forEach(customer => {
-          customer.transactions.forEach(transaction => {
+      user.stores.forEach((store) => {
+        store.customers.forEach((customer) => {
+          customer.transactions.forEach((transaction) => {
             if (transaction._id == transaction_id) {
               found = true;
               to = customer.phone_number;
@@ -485,7 +377,7 @@ exports.send = (req, res) => {
       if (found == false) {
         return res.status(400).json({
           success: false,
-          message: `Customer with transaction id ${transaction_id} not found`
+          message: `Customer with transaction id ${transaction_id} not found`,
         });
       }
 
@@ -511,14 +403,14 @@ exports.send = (req, res) => {
         .send({
           to,
           message: reminder_message,
-          enque: true
+          enque: true,
         })
-        .then(response => {
+        .then((response) => {
           console.log(response);
           if (response.SMSMessageData.Message == "Sent to 0/1 Total Cost: 0") {
             res.status(200).json({
               success: false,
-              Message: "Invalid Phone Number"
+              Message: "Invalid Phone Number",
             });
           } else {
             res.status(200).json({
@@ -526,25 +418,25 @@ exports.send = (req, res) => {
               Message: "Reminder sent",
               details: {
                 to,
-                reminder_message
+                reminder_message,
               },
-              response
+              response,
             });
           }
         })
-        .catch(err => {
+        .catch((err) => {
           console.log(err);
           res.send(err);
         });
     })
-    .catch(err => {
+    .catch((err) => {
       res.status(500).json({
         sucess: false,
         message: "Something Went wrong",
         error: {
           statusCode: 500,
-          message: err.message
-        }
+          message: err.message,
+        },
       });
     });
 };
@@ -559,8 +451,8 @@ exports.schedule = (req, res) => {
       Message: "Please provide the valid parameters",
       error: {
         errorCode: "400",
-        Message: "Please provide the valid parameters"
-      }
+        Message: "Please provide the valid parameters",
+      },
     });
   }
   let identifier = req.user.phone_number;
@@ -571,14 +463,14 @@ exports.schedule = (req, res) => {
       { identifier: req.user.phone_number, user_role: req.user.user_role },
       {
         "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
+        "assistants.user_role": req.user.user_role,
+      },
+    ],
   })
-    .then(user => {
-      user.stores.forEach(store => {
-        store.customers.forEach(customer => {
-          customer.transactions.forEach(transaction => {
+    .then((user) => {
+      user.stores.forEach((store) => {
+        store.customers.forEach((customer) => {
+          customer.transactions.forEach((transaction) => {
             if (transaction._id == transaction_id) {
               to = customer.phone_number;
               amount = transaction.total_amount;
@@ -615,13 +507,13 @@ exports.schedule = (req, res) => {
         sms
           .send({
             to,
-            message: reminder_message
+            message: reminder_message,
           })
-          .then(response => {
+          .then((response) => {
             console.log(response);
             send.destroy();
           })
-          .catch(err => {
+          .catch((err) => {
             console.log(err);
           });
       });
@@ -630,18 +522,18 @@ exports.schedule = (req, res) => {
         Message: "Reminder Scheduled",
         details: {
           to,
-          reminder_message
-        }
+          reminder_message,
+        },
       });
     })
-    .catch(err => {
+    .catch((err) => {
       res.status(500).json({
         sucess: false,
         message: "Something went wrong",
         error: {
           statusCode: 500,
-          message: err.message
-        }
+          message: err.message,
+        },
       });
     });
 };
