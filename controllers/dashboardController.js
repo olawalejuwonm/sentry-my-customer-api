@@ -202,7 +202,7 @@ exports.storeAssistantDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
   const data ={};
   
-  const storeAdmin = await storeAdminModel.aggregate([
+  var storeAdmin = await storeAdminModel.aggregate([
     {$unwind: "$assistants"},
     {$match: { "assistants.phone_number": phone_number }}
   ]);
@@ -219,7 +219,8 @@ exports.storeAssistantDashboard = async (req, res) => {
     });
   }
   try {
-    const assistant = storeAdmin[0].assistants;
+    storeAdmin = storeAdmin[0];
+    const assistant = storeAdmin.assistants;
     data.name = assistant.name;
     data.email = assistant.email;
     data.phone_number = assistant.phone_number;
@@ -235,7 +236,7 @@ exports.storeAssistantDashboard = async (req, res) => {
         }
       })
     }
-    const assistantStore = storeAdmin[0].stores.find(store => store._id == store_id);
+    const assistantStore = storeAdmin.stores.find(store => store._id == store_id);
     data.storeName = assistantStore.store_name;
     data.storeAddress = assistantStore.shop_address
     data.customerCount = 0; 
