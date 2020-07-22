@@ -40,7 +40,7 @@ exports.getAll = async (req, res) => {
     } else {
       debts = await Transaction.find({
         type: "debt",
-        $or: [{ store_admin_id: req.user._id }, { assistant: req.user._id }],
+        store_admin_id: req.user.store_admin_id,
       });
     }
     return res.status(200).json({
