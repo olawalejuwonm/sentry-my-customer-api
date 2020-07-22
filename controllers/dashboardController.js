@@ -268,9 +268,12 @@ exports.storeAssistantDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
   const data ={};
   
-  const storeAdmin = await storeAdminModel.findOne({
-    "assistants.phone_number": phone_number
-  })
+  var storeAdmin = await storeAdminModel.aggregate([
+    {$unwind: "$assistants"},
+    {$match: { "assistants.phone_number": phone_number }}
+  ]);
+
+  
   if (!storeAdmin) {
     return res.status(404).json({
       success: false,
@@ -282,7 +285,8 @@ exports.storeAssistantDashboard = async (req, res) => {
     });
   }
   try {
-    const assistant = storeAdmin.assistants.find(assistant => assistant.phone_number == phone_number);
+    storeAdmin = storeAdmin[0];
+    const assistant = storeAdmin.assistants;
     data.name = assistant.name;
     data.email = assistant.email;
     data.phone_number = assistant.phone_number;
