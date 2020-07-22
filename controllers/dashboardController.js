@@ -61,6 +61,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     stores.forEach(async store => {
       //increment customer count by number of customers in each store
       const customers = await customerModel.find({ store_ref_id: store._id });
+
       data.customerCount = data.customerCount + customers.length;
 
       let date = new Date();
@@ -68,6 +69,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
       const newCustomers = customers.filter(element => {
         return element.createdAt.toDateString() == date.toDateString();
       });
+
       if (newCustomers.length > 0) {
         //push in new customer details into new customers array
         newCustomers.forEach(element =>
@@ -78,7 +80,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
           })
         );
       }
-
+      console.log(data.customerCount);
       customers.forEach(async customer => {
         const transactions = await transactionModel.find({
           customer_ref_id: customer._id
@@ -113,19 +115,19 @@ exports.storeAdminDashboard = async (req, res, next) => {
             }
           });
         }
+        data.transactions.sort(compareCustomers);
+        data.recentTransactions.sort(compareRecentTransactions);
+        data.recentDebts.sort(compareRecentDebts);
+        console.log(data.customerCount);
+        res.status(200).json({
+          success: true,
+          message: "Store Admin dashboard data",
+          data: data
+        });
       });
     });
 
     // sort transactions and debts by date in descending order
-    data.transactions.sort(compareCustomers);
-    data.recentTransactions.sort(compareRecentTransactions);
-    data.recentDebts.sort(compareRecentDebts);
-
-    return res.status(200).json({
-      success: true,
-      message: "Store Admin dashboard data",
-      data: data
-    });
   } catch (error) {
     return res.status(500).json({
       success: false,
