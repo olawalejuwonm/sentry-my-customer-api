@@ -1,7 +1,7 @@
 const StoreAssistantModel = require("../models/storeAssistant");
 const StoreModel = require("../models/store");
 const UserModel = require("../models/store_admin");
-const bCrypt = require("bcryptjs")
+const bCrypt = require("bcryptjs");
 const { errorHandler } = require("./login_controler");
 
 exports.createStoreAssistant = (req, res) => {

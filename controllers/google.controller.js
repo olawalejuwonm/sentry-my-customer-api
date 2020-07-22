@@ -56,11 +56,11 @@ exports.getGoogleAccountFromCode = async (req, res) => {
     if (!user) {
       const newUser = new googleUser({});
       (newUser.identifier = userData.email),
-        (newUser.google.first_name = userData.given_name),
-        (newUser.google.last_name = userData.family_name),
-        (newUser.google.email = userData.email),
-        (newUser.google.googleId = userData.id),
-        (newUser.google.picture = userData.picture);
+      (newUser.google.first_name = userData.given_name),
+      (newUser.google.last_name = userData.family_name),
+      (newUser.google.email = userData.email),
+      (newUser.google.googleId = userData.id),
+      (newUser.google.picture = userData.picture);
       user = await newUser.save();
       console.log(user);
     }
