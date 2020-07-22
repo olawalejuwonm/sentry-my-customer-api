@@ -8,6 +8,11 @@ const storeSchema = new mongoose.Schema({
 	phone_number: {
 		type: String, Default: "Not set"
 	},
+	assistants:[
+		{ type: mongoose.Schema.Types.ObjectId, 
+			ref: "storeAssistant" 
+		}
+	],
 	tagline: { type: String , Default: "Not set"},
 	shop_address: { type: String, required: true },
 	email: { type: String, default: "Not set" },
