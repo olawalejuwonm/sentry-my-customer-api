@@ -11,7 +11,7 @@ const storeAssistantSchema = new Schema(
     name: { type: String, required: true },
     first_name: { type: String },
     last_name: { type: String },
-    phone_number: { type: String, required: true },
+    phone_number: { type: String, required: true, unique: true },
     email: { type: String },
     password: { type: String, default: "password" },
     is_active: { type: Boolean, default: 1 },

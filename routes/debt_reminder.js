@@ -26,7 +26,7 @@ router.put("/debt/update/:transactionId", auth, debt.markAsPaid);
 router.get("/debt/single/:transactionId", auth, debt.getById);
 
 //send reminder  body: { transaction_id, message(optional)}
-router.post("/debt/send", auth, debt.send);
+router.post("/debt/send/:store_id/:customer_id/:transaction_id", auth, debt.send);
 
 //schedule reminder body:{ transaction_id, message(optional), scheduleDate, time }
 router.post("/debt/schedule", auth, debt.schedule);
