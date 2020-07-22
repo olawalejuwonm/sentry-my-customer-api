@@ -41,7 +41,7 @@ exports.create = async (req, res) => {
   try {
     let store = await StoreModel.findOne({
       _id: req.body.store_id,
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+      store_admin_ref: req.user.store_admin_ref,
     });
     if (!store) {
       return res.status(404).json({

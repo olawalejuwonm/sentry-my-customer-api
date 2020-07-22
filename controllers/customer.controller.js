@@ -23,7 +23,7 @@ exports.create = async (req, res) => {
     } else {
       store = await StoreModel.findOne({
         _id: store_id,
-        $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+        store_admin_ref: req.user.store_admin_ref,
       });
     }
     if (!store) {
@@ -72,7 +72,7 @@ exports.getById = async (req, res) => {
   try {
     let store = await StoreModel.findOne({
       _id: req.params.storeId,
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+      store_admin_ref: req.user.store_admin_ref,
     });
     if (!store) {
       return res.status(404).json({
@@ -119,7 +119,7 @@ exports.updateById = async (req, res) => {
     const { name, phone_number, email, store_id } = req.body;
     let store = await StoreModel.findOne({
       _id: store_id,
-      $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+      store_admin_ref: req.user.store_admin_ref,
     });
     if (!store) {
       return res.status(404).json({
@@ -204,7 +204,7 @@ exports.getAll = async (req, res) => {
       stores = await StoreModel.find({});
     } else {
       stores = await StoreModel.find({
-        $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+        store_admin_ref: req.user.store_admin_ref,
       });
     }
     const customer = await Promise.all(

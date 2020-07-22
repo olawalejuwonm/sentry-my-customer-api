@@ -52,9 +52,9 @@ exports.storeAdminDashboard = async (req, res, next) => {
     const stores = storeAdmin.stores;
     const assistants = storeAdmin.assistants;
     //get number of stores
-    data.storeCount = stores.length;
+    data.storeCount = (stores && stores.length) || 0;
     //get number of assisstants
-    data.assistantCount = assistants.length;
+    data.assistantCount = (assistants && assistants.length) || 0;
     //initialize customer count, new customers and transactions
     data.customerCount = 0;
     data.newCustomers = [];

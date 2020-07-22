@@ -109,10 +109,15 @@ exports.newStoreAdmin = async (req, res) => {
 exports.newStoreAssistant = async (req, res) => {
   const { name, email, password, phone_number, store_id } = req.body;
   try {
-    let store = await Store.findOne({
-      store_admin_ref: req.user._id,
-      _id: store_id,
-    });
+    let store;
+    if (req.user.user_role === "super_admin") {
+      store = await Store.findOne({ _id: store_id });
+    } else {
+      store = await Store.findOne({
+        store_admin_ref: req.user._id,
+        _id: store_id,
+      });
+    }
     if (!store) {
       return res.status(404).json({
         success: false,
@@ -144,7 +149,6 @@ exports.newStoreAssistant = async (req, res) => {
       email,
       password: await bcrypt.hash(password, 10),
     });
-    store.assistant = store_assistant._id;
     await store.save();
     return res.status(201).json({
       success: true,

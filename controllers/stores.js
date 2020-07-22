@@ -93,7 +93,7 @@ exports.getAllStores = async (req, res) => {
       stores = await Store.find();
     } else {
       stores = await Store.find({
-        $or: [{ store_admin_ref: req.user._id }, { assistant: req.user._id }],
+        store_admin_ref: req.user.store_admin_ref,
       });
     }
     res.status(200).json({
