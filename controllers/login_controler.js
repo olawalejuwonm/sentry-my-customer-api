@@ -57,10 +57,10 @@ module.exports.loginUser = async (req, res, next) => {
             } else {
               res.status(401).json({
                 success: false,
-                message: "Invalid Password.",
+                message: "Invalid Credentials",
                 error: {
                   code: 401,
-                  description: "Invalid Password",
+                  description: "Invalid Credentials",
                 },
               });
             }
@@ -76,11 +76,11 @@ module.exports.loginUser = async (req, res, next) => {
             });
           });
       } else {
-        try {
-          UserModel.findOne({
-            "assistants.phone_number": phone_number,
-          })
-            .then((user) => {
+        UserModel.findOne({
+          "assistants.phone_number": phone_number,
+        })
+          .then((user) => {
+            if (user) {
               const storeAssistants = user.assistants;
 
               storeAssistants.forEach((storeAssistant) => {
@@ -126,10 +126,10 @@ module.exports.loginUser = async (req, res, next) => {
                           } else {
                             return res.status(401).json({
                               success: false,
-                              message: "Invalid Password.",
+                              message: "Invalid Credentials",
                               error: {
                                 code: 401,
-                                description: "Invalid Password",
+                                description: "Invalid Credentials",
                               },
                             });
                           }
@@ -138,27 +138,28 @@ module.exports.loginUser = async (req, res, next) => {
                   });
                 }
               });
-            })
-            .catch((error) => {
-              return res.status(500).json({
-                success: "false",
-                message: "Internal Server Error.",
+            } else {
+              //if the phone number doesn't exist we send this response
+              res.status(401).json({
+                success: false,
+                message: "Invalid Credentials",
                 error: {
-                  statusCode: 500,
-                  message: "Internal Server Error.",
+                  code: 401,
+                  description: "Invalid Credentials",
                 },
               });
+            }
+          })
+          .catch((error) => {
+            return res.status(500).json({
+              success: "false",
+              message: "Internal Server Error.",
+              error: {
+                statusCode: 500,
+                description: error,
+              },
             });
-        } catch {
-          res.status(404).json({
-            success: false,
-            message: "User does not exist",
-            error: {
-              code: 404,
-              description: "User does not exist",
-            },
           });
-        }
       }
     })
     .catch((error) => {
@@ -217,10 +218,10 @@ module.exports.loginAssistant = async (req, res, next) => {
                   } else {
                     return res.status(401).json({
                       success: false,
-                      message: "Invalid Password.",
+                      message: "Invalid Credentials.",
                       error: {
                         code: 401,
-                        description: "Invalid Password",
+                        description: "Invalid Credentials",
                       },
                     });
                   }
@@ -301,7 +302,7 @@ module.exports.loginCustomer = async (req, res, next) => {
         });
       } else {
         res.json({
-          message: "Invalid phone number.",
+          message: "Invalid Credentials.",
           Status: false,
         });
       }
