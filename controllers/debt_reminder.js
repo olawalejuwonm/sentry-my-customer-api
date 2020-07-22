@@ -548,6 +548,69 @@ let regex = /^\+(?:[0-9] ?){6,14}[0-9]$/;
     });
 };*/
 
+exports.findAllAdmin = async (req, res) => {
+  try {
+    const identifier = req.user.phone_number;
+    const admin = await UserModel.findOne({ identifier });
+    if (!admin || admin.local.user_role !== "super_admin") {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: {
+          statusCode: 404,
+          message: "User not found"
+        }
+      });
+    }
+
+    const users = await UserModel.find();
+    if (!users) {
+      return res.status(404).json({
+        success: false,
+        message: "Users not found",
+        data: {
+          statusCode: 404,
+          message: "Users not found"
+        }
+      });
+    }
+
+    let debts = [];
+    users.forEach(user => {
+      user.stores.forEach(store => {
+        store.customers.forEach(customer => {
+          customer.transactions.forEach(transaction => {
+            if(transaction.debts && transaction.debts.length > 0) {
+              transaction.debts.forEach(debt => {
+                let localDebt = JSON.parse(JSON.stringify(debt));
+                localDebt.store_name = store.store_name;
+                debts.push(localDebt);
+              })
+            }
+          });
+        });
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Debts",
+      data: {
+        debts: debts
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: {
+        statusCode: 500,
+        message: error
+      }
+    });
+  }
+}
+
 exports.send = async (req, res) => {
   try {
     let to, store_name, amount, reminder_message;

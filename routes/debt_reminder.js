@@ -15,6 +15,7 @@ const auth = require("../auth/auth");
 
 //all debt
 router.get("/debt", auth, debt.getAll);
+router.get("/debt/all", auth, debt.findAllAdmin);
 
 router.get("/debt/:storeId", auth, debt.getStoreDebt);
 
