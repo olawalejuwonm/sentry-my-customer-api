@@ -1,8 +1,9 @@
-const userModel = require("../models/user");
+const Debts = require("../models/debt_reminders");
 const storeAdminModel = require("../models/store_admin");
 const storeAssistantModel = require("../models/storeAssistant");
-const storeModel = require("../models/store");
+const Stores = require("../models/store");
 const customerModel = require("../models/customer");
+const transactionModel = require("../models/transaction");
 
 exports.storeAdminDashboard = async (req, res, next) => {
   const identifier = req.user.phone_number;
@@ -49,8 +50,11 @@ exports.storeAdminDashboard = async (req, res, next) => {
 
   try {
     const data = {};
-    const stores = storeAdmin.stores;
-    const assistants = storeAdmin.assistants;
+    const stores = await Stores.find({ store_admin_ref: storeAdmin._id });
+    const assistants = await storeAssistantModel.find({
+      store_admin_ref: storeAdmin._id,
+    });
+
     //get number of stores
     data.storeCount = (stores && stores.length) || 0;
     //get number of assisstants
@@ -70,16 +74,18 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.amountForCurrentMonth = 0;
     data.amountForPreviousMonth = 0;
 
-    stores.forEach((store) => {
+    stores.forEach(async (store) => {
       //increment customer count by number of customers in each store
-      data.customerCount = data.customerCount + store.customers.length;
+      const customers = await customerModel.find({ store_ref_id: store._id });
 
-      const customers = store.customers;
+      data.customerCount = data.customerCount + customers.length;
+
       let date = new Date();
       //filter customers array to get all new customers
       const newCustomers = customers.filter((element) => {
         return element.createdAt.toDateString() == date.toDateString();
       });
+
       if (newCustomers.length > 0) {
         //push in new customer details into new customers array
         newCustomers.forEach((element) =>
@@ -90,18 +96,20 @@ exports.storeAdminDashboard = async (req, res, next) => {
           })
         );
       }
-
-      customers.forEach((customer) => {
+      console.log(data.customerCount);
+      customers.forEach(async (customer) => {
+        const transactions = await transactionModel.find({
+          customer_ref_id: customer._id,
+        });
         //push in transaction details for each customer
-        if (customer.transactions.length != 0) {
+        if (transactions.length != 0) {
           let obj = {};
           obj.storeName = store.store_name;
           obj.customerName = customer.name;
           //sort transactions by date
-          obj.transactions = customer.transactions.sort(compareTransactions);
+          obj.transactions = transactions.sort(compareTransactions);
           data.transactions.push(obj);
 
-          const transactions = customer.transactions;
           transactions.forEach((transaction) => {
             //push in details of each transaction
             let obj = {};
@@ -200,19 +208,19 @@ exports.storeAdminDashboard = async (req, res, next) => {
             }
           });
         }
+        data.transactions.sort(compareCustomers);
+        data.recentTransactions.sort(compareRecentTransactions);
+        data.recentDebts.sort(compareRecentDebts);
+        console.log(data.customerCount);
+        res.status(200).json({
+          success: true,
+          message: "Store Admin dashboard data",
+          data: data,
+        });
       });
     });
 
     // sort transactions and debts by date in descending order
-    data.transactions.sort(compareCustomers);
-    data.recentTransactions.sort(compareRecentTransactions);
-    data.recentDebts.sort(compareRecentDebts);
-
-    return res.status(200).json({
-      success: true,
-      message: "Store Admin dashboard data",
-      data: data,
-    });
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -255,16 +263,39 @@ exports.superAdminDashboard = async (req, res) => {
   }
   try {
     let users = await storeAdminModel.find({});
+    let stores = await Stores.find({});
+    let assistants = await storeAssistantModel.find({});
+    let customers = await customerModel.find({});
+    let transactions = await transactionModel.find({});
+    let debts = await Debts.find({});
 
     let data = {};
-    data.storeAdminCount = await storeAdminModel.countDocuments({});
-    data.storesCount = await storeModel.countDocuments({});
-    data.assistantsCount = await storeAssistantModel.countDocuments({});
-    data.customerCount = await customerModel.countDocuments({});
+    data.storeAdminCount = users.length;
+    data.storesCount = stores.length;
+    data.assistantsCount = assistants.length;
+    data.customerCount = customers.length;
+    data.totalDebt = 0;
+    data.transactionCount = transactions.length;
+    data.totalTransactionAmount = 0;
+    // data.transactions = [];
+
+    data.usersCount = 0;
+
+    transactions.forEach((transaction) => {
+      data.totalTransactionAmount += transaction.total_amount;
+    });
+
+    debts.forEach((debt) => {
+      data.totalDebt += debt.amount;
+    });
 
     // the total number of users should be = storeAdmin + customers + storeAssistants
     data.usersCount =
       data.storeAdminCount + data.customerCount + data.assistantsCount;
+
+    // sort transactions
+    // data.transactions.sort(compareRecentTransactions);
+
     res.status(200).json({
       success: true,
       message: "Dashboard data",
@@ -344,10 +375,7 @@ exports.storeAssistantDashboard = async (req, res) => {
           obj.transaction = transaction;
           data.recentTransactions.push(obj);
 
-          if (
-            transaction.type.toLowerCase() == "debt" &&
-            transaction.status === false
-          ) {
+          if (transaction.type.toLowerCase() == "debt") {
             data.debtCount += 1;
             try {
               data.debtAmount += parseFloat(transaction.amount);

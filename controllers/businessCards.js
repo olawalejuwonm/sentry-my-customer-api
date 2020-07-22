@@ -11,7 +11,7 @@ module.exports = () => async (req, res) => {
       return res.status(403).json({
         message: "You can't access this resource",
         status: 403,
-        user_role: req.user,
+        user_role: req.user
       });
     }
 
@@ -24,10 +24,10 @@ module.exports = () => async (req, res) => {
     }
 
     //  Get all stores owned by user
-    const userStores = user.stores;
+    let userStores = await Stores.find({ store_admin_ref: user._id });
 
     //  Iterate through stores and create cards
-    const data = userStores.map((store) => {
+    const data = userStores.map(store => {
       const { store_name, phone_number, email, shop_address } = store;
 
       return {
@@ -35,7 +35,7 @@ module.exports = () => async (req, res) => {
         storeName: store_name,
         email: email || user.local.email,
         phone: phone_number || user.local.phone_number,
-        storeAddress: shop_address,
+        storeAddress: shop_address
       };
     });
 
