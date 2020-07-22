@@ -272,61 +272,19 @@ exports.findAllUser = async (req, res) => {
 };
 
 // Find a single transaction with a transaction_id
-exports.findOne = async (req, res) => {
+exports.findOne = (passOnReq = false) => async (req, res, next) => {
   try {
-    const identifier = req.user.phone_number;
-    const user = await UserModel.findOne({
-      $or: [
-        {
-          identifier: req.user.phone_number,
-          "local.user_role": req.user.user_role,
-        },
-        {
-          "assistants.phone_number": req.user.phone_number,
-          "assistants.user_role": req.user.user_role,
-        },
-      ],
-    });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-        data: {
-          statusCode: 404,
-          message: "User not found",
-        },
+    let transaction;
+    if ((req.user.user_role = "super_admin")) {
+      transaction = await Transaction.findOne({
+        _id: req.params.transaction_id,
+      });
+    } else {
+      transaction = await Transaction.findOne({
+        _id: req.params._id,
+        store_admin_ref: req.user.store_admin_ref,
       });
     }
-
-    const store = user.stores.find((store) => store._id == req.params.store_id);
-    if (!store) {
-      return res.status(404).json({
-        success: false,
-        message: "Store not found",
-        data: {
-          statusCode: 404,
-          message: "Store not found",
-        },
-      });
-    }
-
-    const customer = store.customers.find(
-      (customer) => customer._id == req.params.customer_id
-    );
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-        data: {
-          statusCode: 404,
-          message: "Customer not found",
-        },
-      });
-    }
-
-    const transaction = customer.transactions.find(
-      (transactions) => transactions._id == req.params.transaction_id
-    );
     if (!transaction) {
       return res.status(404).json({
         success: false,
@@ -337,85 +295,26 @@ exports.findOne = async (req, res) => {
         },
       });
     }
-
-    let localTransaction = JSON.parse(JSON.stringify(transaction));
-    localTransaction.store_name = store.store_name;
-
-    res.status(200).json({
+    if (passOnReq) {
+      req.transaction = transaction;
+      return next();
+    }
+    return res.status(200).json({
       success: true,
       message: "Transaction",
       data: {
-        transaction: localTransaction,
+        transaction,
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Something went wrongr",
-      data: {
-        statusCode: 500,
-        message: error,
-      },
-    });
+    errorHandler(error, res);
   }
 };
 
 // Update a transaction identified by the transaction_id in the request
 exports.update = async (req, res) => {
   try {
-    const identifier = req.user.phone_number;
-    const user = await UserModel.findOne({ identifier });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-        data: {
-          statusCode: 404,
-          message: "User not found",
-        },
-      });
-    }
-
-    const store = user.stores.find((store) => store._id == req.body.store_id);
-    if (!store) {
-      return res.status(404).json({
-        success: false,
-        message: "Store not found",
-        data: {
-          statusCode: 404,
-          message: "Store not found",
-        },
-      });
-    }
-
-    const customer = store.customers.find(
-      (customer) => customer._id == req.body.customer_id
-    );
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-        data: {
-          statusCode: 404,
-          message: "Customer not found",
-        },
-      });
-    }
-
-    const transaction = customer.transactions.find(
-      (transactions) => transactions._id == req.params.transaction_id
-    );
-    if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        message: "Transaction not found",
-        data: {
-          statusCode: 404,
-          message: "Transaction not found",
-        },
-      });
-    }
-
+    transaction = req.transaction;
     transaction.amount = req.body.amount || transaction.amount;
     transaction.interest = req.body.interest || transaction.interest;
     transaction.total_amount =
@@ -423,94 +322,36 @@ exports.update = async (req, res) => {
     transaction.description = req.body.description || transaction.description;
     transaction.type = req.body.type || transaction.type;
     transaction.status =
-      typeof req.body.status !== "undefined" ? req.body.status
+      typeof req.body.status !== "undefined"
+        ? req.body.status
         : transaction.status;
     transaction.expected_pay_date =
       req.body.expected_pay_date || transaction.expected_pay_date;
-
-    await user.save();
+    transaction = await transaction.save();
     res.status(200).json({
       success: true,
       message: "Transaction updated",
       data: {
-        transaction: transaction,
+        transaction,
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      data: {
-        statusCode: 500,
-        message: error,
-      },
-    });
+    errorHandler(error, res);
   }
 };
 
 // Delete a transaction with the specified transaction_id in the request
 exports.delete = async (req, res) => {
   try {
-    const identifier = req.user.phone_number;
-    const user = await UserModel.findOne({ identifier });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-        data: {
-          statusCode: 404,
-          message: "User not found",
-        },
-      });
-    }
-
-    const store = user.stores.find((store) => store._id == req.params.store_id);
-    if (!store) {
-      return res.status(404).json({
-        success: false,
-        message: "Store not found",
-        data: {
-          statusCode: 404,
-          message: "Store not found",
-        },
-      });
-    }
-
-    const customer = store.customers.find(
-      (customer) => customer._id == req.params.customer_id
-    );
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-        data: {
-          statusCode: 404,
-          message: "Customer not found",
-        },
-      });
-    }
-
-    const transactions = customer.transactions.filter(
-      (transactions) => transactions._id != req.params.transaction_id
-    );
-    customer.transactions = transactions;
-
-    await user.save();
-    res.status(200).json({
+    await req.transaction.remove();
+    return res.status(200).json({
       success: true,
       message: "Transactions",
       data: {
-        transactions,
+        transactions: req.transaction,
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Something went wrongr",
-      data: {
-        statusCode: 500,
-        message: error,
-      },
-    });
+    errorHandler(error, res);
   }
 };
