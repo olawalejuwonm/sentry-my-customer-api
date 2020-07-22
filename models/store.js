@@ -1,6 +1,7 @@
 const mongoose = require("mongoose"),
 	  Customer = require("./customer"),
-	  Transaction = require("./transaction")
+	  Transaction = require("./transaction"),
+	  storeAssistant = require("./storeAssistant");
 
 
 const storeSchema = new mongoose.Schema({
@@ -9,9 +10,7 @@ const storeSchema = new mongoose.Schema({
 		type: String, Default: "Not set"
 	},
 	assistants:[
-		{ type: mongoose.Schema.Types.ObjectId, 
-			ref: "storeAssistant" 
-		}
+		storeAssistant.schema
 	],
 	tagline: { type: String , Default: "Not set"},
 	shop_address: { type: String, required: true },
