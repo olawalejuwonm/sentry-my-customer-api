@@ -65,6 +65,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.receivablesCount = 0;
     data.receivablesAmount = 0;
     data.amountForCurrentMonth = 0;
+    data.amountForPreviousMonth = 0;
 
     stores.forEach(store => {
       //increment customer count by number of customers in each store
@@ -126,6 +127,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
             if (transaction.type.toLowerCase() == "debt" && transaction.status == true) {
               data.revenueCount += 1;
               let transactionDate = new Date(transaction.createdAt)
+              //get revenue for current month
               if (date.getMonth() == transactionDate.getMonth() ) {
                 try {
                   data.amountForCurrentMonth += parseFloat(transaction.amount)
@@ -133,7 +135,17 @@ exports.storeAdminDashboard = async (req, res, next) => {
                   data.amountForCurrentMonth += 0
                 }
               }
-              
+
+              //get revenue for previous month
+              if (date.getMonth()-1 == transactionDate.getMonth() ) {
+                try {
+                  data.amountForPreviousMonth += parseFloat(transaction.amount)
+                } catch (error) {
+                  data.amountForPreviousMonth += 0
+                }
+              }
+
+              //increment revenue amount
               try {
                 data.revenueAmount += parseFloat(transaction.amount);
               } catch (error) {
@@ -143,12 +155,22 @@ exports.storeAdminDashboard = async (req, res, next) => {
 
             if (transaction.type.toLowerCase() == "paid") {
               data.revenueCount += 1;
-              let transactionDate = new Date(transaction.createdAt)
+              let transactionDate = new Date(transaction.createdAt);
+              //get revenue for current month
               if (date.getMonth() == transactionDate.getMonth() ) {
                 try {
                   data.amountForCurrentMonth += parseFloat(transaction.amount)
                 } catch (error) {
                   data.amountForCurrentMonth += 0
+                }
+              }
+
+              //get revenue for previous month
+              if (date.getMonth()-1 == transactionDate.getMonth() ) {
+                try {
+                  data.amountForPreviousMonth += parseFloat(transaction.amount)
+                } catch (error) {
+                  data.amountForPreviousMonth += 0
                 }
               }
 
