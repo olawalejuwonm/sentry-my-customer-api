@@ -96,6 +96,12 @@ exports.getAllStores = async (req, res) => {
         store_admin_ref: req.user.store_admin_ref,
       });
     }
+    stores = await Promise.all(
+      stores.map(async (elem) => {
+        let customers = await CustomerModel.find({ store_ref_id: elem._id });
+        return { ...elem, customers };
+      })
+    );
     res.status(200).json({
       success: true,
       result: stores.length,
