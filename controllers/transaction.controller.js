@@ -278,12 +278,16 @@ exports.findOne = (passOnReq = false) => async (req, res, next) => {
     if ((req.user.user_role = "super_admin")) {
       transaction = await Transaction.findOne({
         _id: req.params.transaction_id,
-      });
+      })
+        .populate({ path: "store_ref_id" })
+        .exec();
     } else {
       transaction = await Transaction.findOne({
         _id: req.params._id,
         store_admin_ref: req.user.store_admin_ref,
-      });
+      })
+        .populate({ path: "store_ref_id" })
+        .exec();
     }
     if (!transaction) {
       return res.status(404).json({
@@ -299,6 +303,18 @@ exports.findOne = (passOnReq = false) => async (req, res, next) => {
       req.transaction = transaction;
       return next();
     }
+
+    transaction = transaction.toObject();
+    transaction.store_name = transaction.store_ref_id.store_name || "Unknown";
+    transaction.total_amount =
+      transaction.total_amount ||
+      transaction.total_amount +
+        (transaction.total_amount * transaction.interest) / 100;
+    transaction.store_ref_id = transaction.store_ref_id._id;
+    transaction = Object.keys(transaction).reduce(
+      (acc, cur) => ({ ...acc, [cur]: JSON.stringify(transaction[cur]) }),
+      {}
+    );
     return res.status(200).json({
       success: true,
       message: "Transaction",

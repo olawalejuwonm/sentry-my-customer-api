@@ -99,7 +99,7 @@ exports.getAllStores = async (req, res) => {
     stores = await Promise.all(
       stores.map(async (elem) => {
         let customers = await CustomerModel.find({ store_ref_id: elem._id });
-        return { ...elem, customers };
+        return { ...elem.toObject(), customers };
       })
     );
     res.status(200).json({
