@@ -18,7 +18,11 @@ const transactionSchema = new Schema(
     type: { type: String, required: true },
     status: { type: Boolean, default: false },
     expected_pay_date: { type: Date },
-    store_ref_id: { type: Schema.Types.ObjectId, required: true, ref: "store" },
+    store_ref_id: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "mycustomer_store",
+    },
     customer_ref_id: {
       type: Schema.Types.ObjectId,
       required: true,
