@@ -10,18 +10,13 @@ exports.storeAdminDashboard = async (req, res, next) => {
   const role = req.user.user_role;
 
   if (role != "store_admin") {
-    // if (role == "store_assistant") {
-    //   var u = 1;
-    // } else {
-    //   return next();
-    // }
     res.status(401).send({
       success: false,
       message: "User not authorized to access store admin dashboard",
       error: {
         statusCode: 401,
-        message: "User not authorized to access store admin dashboard",
-      },
+        message: "User not authorized to access store admin dashboard"
+      }
     });
   }
 
@@ -29,13 +24,13 @@ exports.storeAdminDashboard = async (req, res, next) => {
     $or: [
       {
         identifier: req.user.phone_number,
-        "local.user_role": req.user.user_role,
+        "local.user_role": req.user.user_role
       },
       {
         "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role,
-      },
-    ],
+        "assistants.user_role": req.user.user_role
+      }
+    ]
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -43,8 +38,8 @@ exports.storeAdminDashboard = async (req, res, next) => {
       message: "User not found",
       error: {
         statusCode: 404,
-        message: "User not found",
-      },
+        message: "User not found"
+      }
     });
   }
 
@@ -52,13 +47,13 @@ exports.storeAdminDashboard = async (req, res, next) => {
     const data = {};
     const stores = await Stores.find({ store_admin_ref: storeAdmin._id });
     const assistants = await storeAssistantModel.find({
-      store_admin_ref: storeAdmin._id,
+      store_admin_ref: storeAdmin._id
     });
 
     //get number of stores
-    data.storeCount = (stores && stores.length) || 0;
+    data.storeCount = stores.length;
     //get number of assisstants
-    data.assistantCount = (assistants && assistants.length) || 0;
+    data.assistantCount = assistants.length;
     //initialize customer count, new customers and transactions
     data.customerCount = 0;
     data.newCustomers = [];
@@ -74,7 +69,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.amountForCurrentMonth = 0;
     data.amountForPreviousMonth = 0;
 
-    stores.forEach(async (store) => {
+    stores.forEach(async store => {
       //increment customer count by number of customers in each store
       const customers = await customerModel.find({ store_ref_id: store._id });
 
@@ -82,24 +77,24 @@ exports.storeAdminDashboard = async (req, res, next) => {
 
       let date = new Date();
       //filter customers array to get all new customers
-      const newCustomers = customers.filter((element) => {
+      const newCustomers = customers.filter(element => {
         return element.createdAt.toDateString() == date.toDateString();
       });
 
       if (newCustomers.length > 0) {
         //push in new customer details into new customers array
-        newCustomers.forEach((element) =>
+        newCustomers.forEach(element =>
           data.newCustomers.push({
             name: element.name,
             phone_number: element.phone_number,
-            email: element.email,
+            email: element.email
           })
         );
       }
-      console.log(data.customerCount);
-      customers.forEach(async (customer) => {
+
+      customers.forEach(async customer => {
         const transactions = await transactionModel.find({
-          customer_ref_id: customer._id,
+          customer_ref_id: customer._id
         });
         //push in transaction details for each customer
         if (transactions.length != 0) {
@@ -110,7 +105,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
           obj.transactions = transactions.sort(compareTransactions);
           data.transactions.push(obj);
 
-          transactions.forEach((transaction) => {
+          transactions.forEach(transaction => {
             //push in details of each transaction
             let obj = {};
             obj.storeName = store.store_name;
@@ -211,11 +206,10 @@ exports.storeAdminDashboard = async (req, res, next) => {
         data.transactions.sort(compareCustomers);
         data.recentTransactions.sort(compareRecentTransactions);
         data.recentDebts.sort(compareRecentDebts);
-        console.log(data.customerCount);
         res.status(200).json({
           success: true,
           message: "Store Admin dashboard data",
-          data: data,
+          data: data
         });
       });
     });
@@ -227,8 +221,8 @@ exports.storeAdminDashboard = async (req, res, next) => {
       message: "Internal server error",
       error: {
         statusCode: 500,
-        message: error,
-      },
+        message: error
+      }
     });
   }
 };
@@ -245,8 +239,8 @@ exports.superAdminDashboard = async (req, res) => {
       message: "User not found",
       error: {
         statusCode: 404,
-        message: "User not found",
-      },
+        message: "User not found"
+      }
     });
   }
 
@@ -257,8 +251,8 @@ exports.superAdminDashboard = async (req, res) => {
       message: "Unauthorised, resource can only accessed by Super Admin",
       error: {
         statusCode: 401,
-        message: "Unauthorised, resource can only accessed by Super Admin",
-      },
+        message: "Unauthorised, resource can only accessed by Super Admin"
+      }
     });
   }
   try {
@@ -281,11 +275,11 @@ exports.superAdminDashboard = async (req, res) => {
 
     data.usersCount = 0;
 
-    transactions.forEach((transaction) => {
+    transactions.forEach(transaction => {
       data.totalTransactionAmount += transaction.total_amount;
     });
 
-    debts.forEach((debt) => {
+    debts.forEach(debt => {
       data.totalDebt += debt.amount;
     });
 
@@ -299,7 +293,7 @@ exports.superAdminDashboard = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Dashboard data",
-      data,
+      data
     });
   } catch (err) {
     return res.status(500).json({
@@ -307,8 +301,8 @@ exports.superAdminDashboard = async (req, res) => {
       message: "Internal server error",
       error: {
         statusCode: 500,
-        message: error.message,
-      },
+        message: error.message
+      }
     });
   }
 };
@@ -318,7 +312,7 @@ exports.storeAssistantDashboard = async (req, res) => {
   const data = {};
 
   const storeAdmin = await storeAdminModel.findOne({
-    "assistants.phone_number": phone_number,
+    "assistants.phone_number": phone_number
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -326,13 +320,13 @@ exports.storeAssistantDashboard = async (req, res) => {
       message: "Store Admin not found",
       error: {
         statusCode: 404,
-        message: "Store Admin not found",
-      },
+        message: "Store Admin not found"
+      }
     });
   }
   try {
     const assistant = storeAdmin.assistants.find(
-      (assistant) => assistant.phone_number == phone_number
+      assistant => assistant.phone_number == phone_number
     );
     data.name = assistant.name;
     data.email = assistant.email;
@@ -345,12 +339,12 @@ exports.storeAssistantDashboard = async (req, res) => {
         message: "Assistant does not belong to a store",
         error: {
           statusCode: "",
-          message: "Assistant does not belong to a store",
-        },
+          message: "Assistant does not belong to a store"
+        }
       });
     }
     const assistantStore = storeAdmin.stores.find(
-      (store) => store._id == store_id
+      store => store._id == store_id
     );
     data.storeName = assistantStore.store_name;
     data.storeAddress = assistantStore.shop_address;
@@ -363,9 +357,9 @@ exports.storeAssistantDashboard = async (req, res) => {
     data.revenueAmount = 0;
     data.receivablesCount = 0;
     data.receivablesAmount = 0;
-    assistantStore.customers.forEach((customer) => {
+    assistantStore.customers.forEach(customer => {
       data.customerCount += 1;
-      customer.transactions.forEach((transaction) => {
+      customer.transactions.forEach(transaction => {
         if (transaction.assistant_inCharge == assistant._id) {
           data.transactionCount += 1;
 
@@ -419,7 +413,7 @@ exports.storeAssistantDashboard = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Store Assistant dashboard data",
-      data: data,
+      data: data
     });
   } catch (error) {
     res.status(500).send({
@@ -427,8 +421,8 @@ exports.storeAssistantDashboard = async (req, res) => {
       message: error.message,
       error: {
         statusCode: 500,
-        message: error.message,
-      },
+        message: error.message
+      }
     });
   }
 };
@@ -440,7 +434,7 @@ exports.customerDashboard = async (req, res) => {
     const storeAdmin = await storeAdminModel.aggregate([
       { $unwind: "$stores" },
       { $unwind: "$stores.customers" },
-      { $match: { "stores.customers.phone_number": phone_number } },
+      { $match: { "stores.customers.phone_number": phone_number } }
     ]);
 
     if (storeAdmin.length == 0) {
@@ -449,8 +443,8 @@ exports.customerDashboard = async (req, res) => {
         message: "Customer store has no admin",
         error: {
           statusCode: 400,
-          message: "Customer store has no admin",
-        },
+          message: "Customer store has no admin"
+        }
       });
     }
 
@@ -461,8 +455,8 @@ exports.customerDashboard = async (req, res) => {
         message: "Customer does not belong to a store",
         error: {
           statusCode: 400,
-          message: "Customer does not belong to a store",
-        },
+          message: "Customer does not belong to a store"
+        }
       });
     }
 
@@ -476,11 +470,11 @@ exports.customerDashboard = async (req, res) => {
       res.status(200).send({
         success: true,
         message: "Customer dashboard data",
-        data: storeAdmin,
+        data: storeAdmin
       });
     }
 
-    storeAdmin.forEach((admin) => {
+    storeAdmin.forEach(admin => {
       const store = admin.stores;
       const customer = store.customers;
       //sort customer transactions and debts by date
@@ -494,7 +488,7 @@ exports.customerDashboard = async (req, res) => {
     res.status(200).send({
       success: true,
       message: "Customer dashboard data",
-      data: storeAdmin,
+      data: storeAdmin
     });
   } catch (error) {
     res.status(500).send({
@@ -502,8 +496,8 @@ exports.customerDashboard = async (req, res) => {
       message: "Internal server error",
       error: {
         statusCode: 500,
-        message: error.message,
-      },
+        message: error.message
+      }
     });
   }
 };

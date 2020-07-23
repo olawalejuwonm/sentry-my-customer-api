@@ -1,5 +1,7 @@
 const nodemailer = require("nodemailer"),
-  userModel = require("../models/store_admin");
+  userModel = require("../models/store_admin"),
+  CustomerModel = require("../models/customer"),
+  StoreModel = require("../models/store");
 
 module.exports = {
   sendMail: () => async (req, res) => {
@@ -11,14 +13,16 @@ module.exports = {
         secure: false,
         auth: {
           user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASSWORD,
-        },
+          pass: process.env.MAIL_PASSWORD
+        }
       });
       if (!req.body.store_id || !req.body.html || !req.body.subject) {
         const html = req.body.html ? {} : { html: 'Path "html" is required' },
-          store_id = req.body.store_id ? {}
+          store_id = req.body.store_id
+            ? {}
             : { store_id: 'Path "store_id" is required' },
-          subject = req.body.subject ? {}
+          subject = req.body.subject
+            ? {}
             : { subject: 'Path "subject" is required' };
         return res.status(422).json({
           success: false,
@@ -28,9 +32,9 @@ module.exports = {
             errors: {
               ...html,
               ...store_id,
-              ...subject,
-            },
-          },
+              ...subject
+            }
+          }
         });
       }
 
@@ -46,35 +50,33 @@ module.exports = {
           success: false,
           error: {
             code: 401,
-            message: "You cannot access this resource",
-          },
+            message: "You cannot access this resource"
+          }
         });
       }
-      const store = await user.stores.find(
-        (elem) => elem._id.toString() === store_id
-      );
+
+      const store = await StoreModel.findById(store_id);
+
       if (!store) {
         return res.status(404).json({
           success: false,
           message: "Not found",
           error: {
             message: "Could not find store",
-            code: 404,
-          },
+            code: 404
+          }
         });
       }
+      const customer = await CustomerModel.findById(customer_id);
 
-      const customer = await store.customers.find(
-        (elem) => elem._id.toString() === customer_id
-      );
       if (!customer) {
         return res.status(404).json({
           success: false,
           message: "Not found",
           error: {
             message: "Could not find customer",
-            code: 404,
-          },
+            code: 404
+          }
         });
       }
       if (!customer.email) {
@@ -83,8 +85,8 @@ module.exports = {
           message: "Missing requirement",
           error: {
             code: 400,
-            message: "customer does not have a registered email",
-          },
+            message: "customer does not have a registered email"
+          }
         });
       }
 
@@ -92,7 +94,7 @@ module.exports = {
         from: store.store_name,
         to: customer.email,
         subject: req.body.subject,
-        html: req.body.html,
+        html: req.body.html
       };
       return transporter.sendMail(mailOptions, (err, data) => {
         if (err) {
@@ -101,14 +103,14 @@ module.exports = {
             message: "An unexpected error occurred",
             error: {
               ...err,
-              message: err.message,
-            },
+              message: err.message
+            }
           });
         } else {
           return res.status(200).json({
             success: true,
             message: "Email sent successfully",
-            data,
+            data
           });
         }
       });
@@ -118,9 +120,9 @@ module.exports = {
         success: false,
         error: {
           code: 500,
-          message: error.message,
-        },
+          message: error.message
+        }
       });
     }
-  },
+  }
 };
