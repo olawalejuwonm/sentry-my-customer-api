@@ -202,12 +202,13 @@ exports.storeAdminDashboard = async (req, res, next) => {
         data.transactions.sort(compareCustomers);
         data.recentTransactions.sort(compareRecentTransactions);
         data.recentDebts.sort(compareRecentDebts);
-        res.status(200).json({
-          success: true,
-          message: "Store Admin dashboard data",
-          data: data,
-        });
       });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Store Admin dashboard data",
+      data: data,
     });
 
     // sort transactions and debts by date in descending order
@@ -270,7 +271,7 @@ exports.superAdminDashboard = async (req, res) => {
 
     data.usersCount = 0;
 
-    transactions.forEach(transaction => {
+    transactions.forEach((transaction) => {
       data.totalTransactionAmount += parseInt(transaction.total_amount);
       if (
         transaction.type.toLowerCase() == "debt" &&
@@ -278,7 +279,6 @@ exports.superAdminDashboard = async (req, res) => {
       ) {
         data.totalDebt += parseInt(transaction.total_amount);
       }
-
     });
 
     // the total number of users should be = storeAdmin + customers + storeAssistants
