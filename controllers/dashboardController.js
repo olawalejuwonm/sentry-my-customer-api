@@ -128,7 +128,10 @@ exports.storeAdminDashboard = async (req, res, next) => {
               data.revenueCount += 1;
               let transactionDate = new Date(transaction.createdAt)
               //get revenue for current month
-              if (date.getMonth() == transactionDate.getMonth() ) {
+              if (date.getMonth() == transactionDate.getMonth() && 
+                date.getFullYear() == transactionDate.getFullYear()
+              ) 
+              {
                 try {
                   data.amountForCurrentMonth += parseFloat(transaction.amount)
                 } catch (error) {
@@ -137,7 +140,9 @@ exports.storeAdminDashboard = async (req, res, next) => {
               }
 
               //get revenue for previous month
-              if (date.getMonth()-1 == transactionDate.getMonth() ) {
+              if (date.getMonth()-1 == transactionDate.getMonth() && 
+                date.getFullYear() == transactionDate.getFullYear()
+              ) {
                 try {
                   data.amountForPreviousMonth += parseFloat(transaction.amount)
                 } catch (error) {
@@ -336,6 +341,8 @@ exports.storeAssistantDashboard = async (req, res) => {
     data.revenueAmount = 0;
     data.receivablesCount = 0;
     data.receivablesAmount = 0;
+    data.amountForCurrentMonth = 0;
+    data.amountForPreviousMonth = 0;
     assistantStore.customers.forEach(customer => {
       data.customerCount += 1;
       customer.transactions.forEach(transaction => {
@@ -355,20 +362,73 @@ exports.storeAssistantDashboard = async (req, res) => {
               data.debtAmount += 0
             }
           }
+          
           if (transaction.type.toLowerCase() == 'debt' &&  transaction.status == true) {
             data.revenueCount += 1;
             try { data.revenueAmount += parseFloat(transaction.amount); 
             } catch (error) {
               data.revenueAmount += 0
-            } 
+            }
+
+            let date = new Date();
+            let transactionDate = new Date(transaction.createdAt)
+            //get revenue for current month
+            if (date.getMonth() == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) 
+            {
+              try {
+                data.amountForCurrentMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForCurrentMonth += 0
+              }
+            }
+
+            //get revenue for previous month
+            if (date.getMonth()-1 == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) {
+              try {
+                data.amountForPreviousMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForPreviousMonth += 0
+              }
+            }
           }
+
           if (transaction.type.toLowerCase() == 'paid') {
             data.revenueCount += 1;
             try { data.revenueAmount += parseFloat(transaction.amount); 
             } catch (error) {
               data.revenueAmount += 0
             }
+
+            let date = new Date();
+            let transactionDate = new Date(transaction.createdAt)
+            //get revenue for current month
+            if (date.getMonth() == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) 
+            {
+              try {
+                data.amountForCurrentMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForCurrentMonth += 0
+              }
+            }
+
+            //get revenue for previous month
+            if (date.getMonth()-1 == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) {
+              try {
+                data.amountForPreviousMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForPreviousMonth += 0
+              }
+            }
           }
+
           if (transaction.type.toLowerCase() == 'receivables') {
             data.receivablesCount += 1;
             try { data.receivablesAmount +=  parseFloat(transaction.amount); 
