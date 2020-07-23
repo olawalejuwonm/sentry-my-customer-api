@@ -4,6 +4,7 @@ const storeAssistantModel = require("../models/storeAssistant");
 const Stores = require("../models/store");
 const customerModel = require("../models/customer");
 const transactionModel = require("../models/transaction");
+const transaction = require("../models/transaction");
 
 exports.storeAdminDashboard = async (req, res, next) => {
   const identifier = req.user.phone_number;
@@ -261,7 +262,6 @@ exports.superAdminDashboard = async (req, res) => {
     let assistants = await storeAssistantModel.find({});
     let customers = await customerModel.find({});
     let transactions = await transactionModel.find({});
-    let debts = await Debts.find({});
 
     let data = {};
     data.storeAdminCount = users.length;
@@ -276,11 +276,13 @@ exports.superAdminDashboard = async (req, res) => {
     data.usersCount = 0;
 
     transactions.forEach(transaction => {
-      data.totalTransactionAmount += transaction.total_amount;
-    });
-
-    debts.forEach(debt => {
-      data.totalDebt += debt.amount;
+      data.totalTransactionAmount += parseInt(transaction.total_amount);
+      if (
+        transaction.type.toLowerCase() == "debt" &&
+        transaction.status == false
+      ) {
+        data.totalDebt += parseInt(transaction.total_amount);
+      }
     });
 
     // the total number of users should be = storeAdmin + customers + storeAssistants
