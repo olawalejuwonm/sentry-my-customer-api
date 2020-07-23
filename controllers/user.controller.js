@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 
 const responseManager = require("../util/response_manager");
+const util = require("../util/sort_data");
 const DataUri = require("datauri/parser");
 const path = require("path");
 const { uploader } = require("./cloudinaryController");
@@ -222,45 +223,211 @@ exports.newStoreAssistant = async (req, res) => {
 };
 
 // Get Single Store Assistant with assistant_id.
-exports.getSingleStoreAssistant = (req, res) => {
-  const id = req.user.phone_number;
-  const storeAssistantId = req.params.assistant_id;
-  User.findOne({
-    $or: [
-      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
-  })
-    .then(user => {
-      const storeAssistants = user.assistants;
+exports.getSingleStoreAssistant = async (req, res) => {
+  // User.findOne({
+  //   $or: [
+  //     { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+  //     {
+  //       "assistants.phone_number": req.user.phone_number,
+  //       "assistants.user_role": req.user.user_role
+  //     }
+  //   ]
+  // })
+  //   .then(user => {
+  //     const storeAssistants = user.assistants;
 
-      storeAssistants.forEach(storeAssistant => {
-        if (storeAssistant._id == storeAssistantId) {
-          return res.status(200).json({
-            success: true,
-            message: "Store Assistant retrieved successfully.",
-            data: {
-              status: 200,
-              message: "Store Assistant retrieved successfully.",
-              store_assistant: storeAssistant
-            }
-          });
+  //     storeAssistants.forEach(storeAssistant => {
+  //       if (storeAssistant._id == storeAssistantId) {
+  //         return res.status(200).json({
+  //           success: true,
+  //           message: "Store Assistant retrieved successfully.",
+  //           data: {
+  //             status: 200,
+  //             message: "Store Assistant retrieved successfully.",
+  //             store_assistant: storeAssistant
+  //           }
+  //         });
+  //       }
+  //     });
+  //   })
+  //   .catch(error => {
+  //     return res.status(500).json({
+  //       success: "false",
+  //       message: "Internal Server Error.",
+  //       error: {
+  //         statusCode: 500,
+  //         message: "Internal Server Error."
+  //       }
+  //     });
+  //   });
+
+  const storeAssistantId = req.params.assistant_id;
+  const data ={};
+  
+  const storeAdmin = await User.findOne({
+      $or: [
+        { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+        {
+          "assistants.phone_number": req.user.phone_number,
+          "assistants.user_role": req.user.user_role
         }
-      });
-    })
-    .catch(error => {
-      return res.status(500).json({
-        success: "false",
-        message: "Internal Server Error.",
-        error: {
-          statusCode: 500,
-          message: "Internal Server Error."
-        }
-      });
+      ]
+  })
+
+  if (!storeAdmin) {
+    return res.status(404).json({
+      success: false,
+      message: "Store Admin not found",
+      error: {
+        statusCode: 404,
+        message: "Store Admin not found"
+      }
     });
+  }
+  try {
+    const assistant = storeAdmin.assistants.find(assistant => assistant._id == storeAssistantId);
+    data.user = assistant;
+    
+    const store_id = assistant.store_id;
+    if (!store_id) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assistant does not belong to a store',
+        error:{
+          statusCode: '',
+          message: 'Assistant does not belong to a store'
+        }
+      })
+    }
+    const assistantStore = storeAdmin.stores.find(store => store._id == store_id);
+    data.storeName = assistantStore.store_name;
+    data.storeAddress = assistantStore.shop_address
+    data.customerCount = 0; 
+    data.transactionCount = 0;
+    data.recentTransactions =[]
+    data.debtCount = 0;
+    data.debtAmount = 0;
+    data.revenueCount = 0;
+    data.revenueAmount = 0;
+    data.receivablesCount = 0;
+    data.receivablesAmount = 0;
+    data.amountForCurrentMonth = 0;
+    data.amountForPreviousMonth = 0;
+    assistantStore.customers.forEach(customer => {
+      data.customerCount += 1;
+      customer.transactions.forEach(transaction => {
+        if (transaction.assistant_inCharge == assistant._id) {
+          data.transactionCount += 1;
+
+          let obj = {};
+          obj.customerName = customer.name;
+          obj.storeName = assistantStore.store_name;
+          obj.transaction = transaction;
+          data.recentTransactions.push(obj);
+
+          if (transaction.type.toLowerCase() == 'debt' && transaction.status == false) {
+            data.debtCount += 1;
+            try { data.debtAmount += parseFloat(transaction.amount); 
+            } catch (error) {
+              data.debtAmount += 0
+            }
+          }
+
+          if (transaction.type.toLowerCase() == 'debt' &&  transaction.status == true) {
+            data.revenueCount += 1;
+            try { data.revenueAmount += parseFloat(transaction.amount); 
+            } catch (error) {
+              data.revenueAmount += 0
+            }
+
+            let date = new Date();
+            let transactionDate = new Date(transaction.createdAt)
+            //get revenue for current month
+            if (date.getMonth() == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) 
+            {
+              try {
+                data.amountForCurrentMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForCurrentMonth += 0
+              }
+            }
+
+            //get revenue for previous month
+            if (date.getMonth()-1 == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) {
+              try {
+                data.amountForPreviousMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForPreviousMonth += 0
+              }
+            }
+          }
+
+          if (transaction.type.toLowerCase() == 'paid') {
+            data.revenueCount += 1;
+            try { data.revenueAmount += parseFloat(transaction.amount); 
+            } catch (error) {
+              data.revenueAmount += 0
+            }
+
+            let date = new Date();
+            let transactionDate = new Date(transaction.createdAt)
+            //get revenue for current month
+            if (date.getMonth() == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) 
+            {
+              try {
+                data.amountForCurrentMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForCurrentMonth += 0
+              }
+            }
+
+            //get revenue for previous month
+            if (date.getMonth()-1 == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) {
+              try {
+                data.amountForPreviousMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForPreviousMonth += 0
+              }
+            }
+          }
+
+          if (transaction.type.toLowerCase() == 'receivables') {
+            data.receivablesCount += 1;
+            try { data.receivablesAmount +=  parseFloat(transaction.amount); 
+            } catch (error) {
+              data.receivablesAmount += 0
+            }
+          }
+        }
+      })
+    })
+    //sort transactions by time
+    data.recentTransactions.sort(util.compareRecentTransactions)
+
+    return res.status(200).json({
+      success: true,
+      message: "Store Assistant data",
+      data: data
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: error.message,
+      error:{
+        statusCode: 500,
+        message: error.message
+      }
+    })
+  }
+  
 };
 
 //  Update Single Store Assistant with assistant_id.
