@@ -316,9 +316,11 @@ exports.superAdminDashboard = async (req, res) => {
 exports.storeAssistantDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
   const data = {};
-
+  const assistant = await storeAssistantModel.findOne({
+    phone_number: phone_number,
+  });
   const storeAdmin = await storeAdminModel.findOne({
-    "assistants.phone_number": phone_number,
+    _id: assistant.store_admin_ref,
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -331,9 +333,6 @@ exports.storeAssistantDashboard = async (req, res) => {
     });
   }
   try {
-    const assistant = storeAdmin.assistants.find(
-      (assistant) => assistant.phone_number == phone_number
-    );
     data.name = assistant.name;
     data.email = assistant.email;
     data.phone_number = assistant.phone_number;
@@ -349,9 +348,8 @@ exports.storeAssistantDashboard = async (req, res) => {
         },
       });
     }
-    const assistantStore = storeAdmin.stores.find(
-      (store) => store._id == store_id
-    );
+    const assistantStore = await Stores.find({ _id: store_id });
+    const customers = await customerModel.find({ store_ref_id: store._id });
     data.storeName = assistantStore.store_name;
     data.storeAddress = assistantStore.shop_address;
     data.customerCount = 0;
@@ -363,9 +361,12 @@ exports.storeAssistantDashboard = async (req, res) => {
     data.revenueAmount = 0;
     data.receivablesCount = 0;
     data.receivablesAmount = 0;
-    assistantStore.customers.forEach((customer) => {
+    customers.forEach((customer) => {
       data.customerCount += 1;
-      customer.transactions.forEach((transaction) => {
+      const transactions = await transactionModel.find({
+          customer_ref_id: customer._id,
+        });
+      transactions.forEach((transaction) => {
         if (transaction.assistant_inCharge == assistant._id) {
           data.transactionCount += 1;
 
@@ -437,24 +438,20 @@ exports.customerDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
   const data = [];
   try {
-    const storeAdmin = await storeAdminModel.aggregate([
-      { $unwind: "$stores" },
-      { $unwind: "$stores.customers" },
-      { $match: { "stores.customers.phone_number": phone_number } },
-    ]);
-
-    if (storeAdmin.length == 0) {
+    const customer = await customerModel.find({ phone_number: phone_number});
+    if (!customer) {
       res.status(404).send({
         success: false,
-        message: "Customer store has no admin",
+        message: "Customer does not exist",
         error: {
           statusCode: 400,
-          message: "Customer store has no admin",
+          message: "Customer does not exist",
         },
       });
     }
 
-    const store = storeAdmin[0].stores;
+    const store = await Stores.find({ _id: customer.store_ref_id});
+
     if (!store) {
       res.status(404).send({
         success: false,
@@ -466,36 +463,23 @@ exports.customerDashboard = async (req, res) => {
       });
     }
 
-    if (storeAdmin.length == 1) {
-      const customer = store.customers;
+      const transactions = await transactionModel.find({
+          customer_ref_id: customer._id,
+        });
       //sort customer transactions and debts by date
-      customer.transactions.sort(compareTransactions);
-      if (customer.transactions.debts) {
-        customer.transactions.debts.sort(compareTransactions);
+      transactions.sort(compareTransactions);
+      if (transactions.debts) {
+        transactions.debts.sort(compareTransactions);
       }
+      data.push(customer)
+      data.push(store)
+      data.push(transactions)
       res.status(200).send({
         success: true,
         message: "Customer dashboard data",
-        data: storeAdmin,
+        data: data,
       });
-    }
 
-    storeAdmin.forEach((admin) => {
-      const store = admin.stores;
-      const customer = store.customers;
-      //sort customer transactions and debts by date
-      customer.transactions.sort(compareTransactions);
-      if (customer.transactions.debts) {
-        customer.transactions.debts.sort(compareTransactions);
-      }
-      data.push(admin);
-    });
-
-    res.status(200).send({
-      success: true,
-      message: "Customer dashboard data",
-      data: storeAdmin,
-    });
   } catch (error) {
     res.status(500).send({
       success: false,
