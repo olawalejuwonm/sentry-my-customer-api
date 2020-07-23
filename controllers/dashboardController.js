@@ -203,8 +203,8 @@ exports.storeAdminDashboard = async (req, res, next) => {
 
     // sort transactions and debts by date in descending order
     data.transactions.sort(util.compareCustomers);
-    data.recentTransactions.sort(util.compareRecentTransactions);
-    data.recentDebts.sort(util.compareRecentDebts);
+    data.recentTransactions = data.recentTransactions.sort(util.compareRecentTransactions).slice(0,15);
+    data.recentDebts= data.recentDebts.sort(util.compareRecentDebts).slice(0,15);
 
     return res.status(200).json({
       success: true,
@@ -439,7 +439,7 @@ exports.storeAssistantDashboard = async (req, res) => {
       })
     })
     //sort transactions by time
-    data.recentTransactions.sort(util.compareRecentTransactions)
+    data.recentTransactions.sort(util.compareRecentTransactions).slice(0,15)
 
     return res.status(200).json({
       success: true,
