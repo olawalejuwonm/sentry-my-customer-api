@@ -7,7 +7,6 @@ const mongoose = require("mongoose");
 const Transaction = require("../models/transaction");
 const { all } = require("../routes/customer");
 const cron = require("node-cron");
-const transaction = require("../models/transaction");
 const africastalking = require("africastalking")({
   apiKey: process.env.AFRICASTALKING_API_KEY,
   username: process.env.AFRICASTALKING_USERNAME,
@@ -293,8 +292,8 @@ exports.send = async (req, res) => {
 };
 
 // Schedule reminder route
-exports.schedule = (req, res) => {
-  const { transaction_id, message, scheduleDate, time } = req.body;
+exports.schedule = async (req, res) => {
+  let { transaction_id, message, scheduleDate, time } = req.body;
 
   if (!scheduleDate || !time || !transaction_id) {
     return res.send(400).json({
@@ -306,88 +305,78 @@ exports.schedule = (req, res) => {
       },
     });
   }
-  let identifier = req.user.phone_number;
-  let to, store_name, amount, reminder_message;
-
-  UserModel.findOne({
-    $or: [
-      {
-        identifier: req.user.phone_number,
-        "local.user_role": req.user.user_role,
-      },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role,
-      },
-    ],
-  })
-    .then((user) => {
-      user.stores.forEach((store) => {
-        store.customers.forEach((customer) => {
-          customer.transactions.forEach((transaction) => {
-            if (transaction._id == transaction_id) {
-              to = customer.phone_number;
-              amount = transaction.total_amount;
-              store_name = store.store_name;
-            }
-          });
-        });
+  try {
+    let transaction;
+    if (req.user.user_role === "super_admin") {
+      transaction = await (await Transaction.findOne({ _id: transaction_id }))
+        .populated({ path: "customer_ref_id store_ref_id" })
+        .exe();
+    } else {
+      transaction = await Transaction.findOne({
+        _id: transaction_id,
+        store_admin_ref: req.user.store_admin_ref,
+      })
+        .populated({ path: "customer_ref_id store_ref_id" })
+        .exe();
+    }
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+        data: {
+          statusCode: 404,
+        },
       });
+    }
+    let to = transaction.customer_ref_id.phone_number;
+    let amount = transaction.amount;
+    let store_name = transaction.store_ref_id.store_name;
+    if (!message) {
+      reminder_message = `You have an unpaid debt of ${amount} Naira in ${store_name}`;
+    } else {
+      reminder_message = message;
+    }
 
-      if (!message) {
-        reminder_message = `You have an unpaid debt of ${amount} Naira in ${store_name}`;
+    if (!regex.test(to)) {
+      if (to.charAt(0) == "0") {
+        to = to.slice(1);
+        to = "+234" + to;
+      } else if (to.charAt(0) == "2") {
+        to = "+" + to;
       } else {
-        reminder_message = message;
+        to = "+234" + to;
       }
+    }
 
-      if (!regex.test(to)) {
-        if (to.charAt(0) == "0") {
-          to = to.slice(1);
-          to = "+234" + to;
-        } else if (to.charAt(0) == "2") {
-          to = "+" + to;
-        } else {
-          to = "+234" + to;
-        }
-      }
+    let h = time.slice(0, 2);
+    let m = time.slice(3);
+    let d = scheduleDate.slice(0, 2);
+    let mo = scheduleDate.slice(3, 5);
 
-      let h = time.slice(0, 2);
-      let m = time.slice(3);
-      let d = scheduleDate.slice(0, 2);
-      let mo = scheduleDate.slice(3, 5);
-
-      const send = cron.schedule(`${m} ${h} ${d} ${mo} *`, () => {
-        const sms = africastalking.SMS;
-        sms
-          .send({
-            to,
-            message: reminder_message,
-          })
-          .then((response) => {
-            console.log(response);
-            send.destroy();
-          })
-          .catch((err) => {
-            console.log(err);
-          });
-      });
-      res.status(200).json({
-        success: true,
-        Message: "Reminder Scheduled",
-        details: {
+    const send = cron.schedule(`${m} ${h} ${d} ${mo} *`, () => {
+      const sms = africastalking.SMS;
+      sms
+        .send({
           to,
-          reminder_message,
-        },
-      });
-    })
-    .catch((err) => {
-      res.status(500).json({
-        sucess: false,
-        message: "Something went wrong",
-        error: {
-          statusCode: 500,
-          message: err.message,
-        },
-      });
+          message: reminder_message,
+        })
+        .then((response) => {
+          console.log(response);
+          send.destroy();
+        })
+        .catch((err) => {
+          console.log(err);
+        });
     });
+    res.status(200).json({
+      success: true,
+      Message: "Reminder Scheduled",
+      details: {
+        to,
+        reminder_message,
+      },
+    });
+  } catch (error) {
+    errorHandler(error, res);
+  }
 };
