@@ -439,7 +439,7 @@ exports.storeAssistantDashboard = async (req, res) => {
       })
     })
     //sort transactions by time
-    data.recentTransactions.sort(util.compareRecentTransactions).slice(0,15)
+    data.recentTransactions = data.recentTransactions.sort(util.compareRecentTransactions).slice(0,15)
 
     return res.status(200).json({
       success: true,
