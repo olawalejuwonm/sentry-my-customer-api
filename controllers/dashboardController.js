@@ -361,11 +361,11 @@ exports.storeAssistantDashboard = async (req, res) => {
     data.revenueAmount = 0;
     data.receivablesCount = 0;
     data.receivablesAmount = 0;
-    customers.forEach((customer) => {
+    customers.forEach(async (customer) => {
       data.customerCount += 1;
       const transactions = await transactionModel.find({
-          customer_ref_id: customer._id,
-        });
+        customer_ref_id: customer._id,
+      });
       transactions.forEach((transaction) => {
         if (transaction.assistant_inCharge == assistant._id) {
           data.transactionCount += 1;
@@ -438,7 +438,7 @@ exports.customerDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
   const data = [];
   try {
-    const customer = await customerModel.find({ phone_number: phone_number});
+    const customer = await customerModel.find({ phone_number: phone_number });
     if (!customer) {
       res.status(404).send({
         success: false,
@@ -450,7 +450,7 @@ exports.customerDashboard = async (req, res) => {
       });
     }
 
-    const store = await Stores.find({ _id: customer.store_ref_id});
+    const store = await Stores.find({ _id: customer.store_ref_id });
 
     if (!store) {
       res.status(404).send({
@@ -463,23 +463,22 @@ exports.customerDashboard = async (req, res) => {
       });
     }
 
-      const transactions = await transactionModel.find({
-          customer_ref_id: customer._id,
-        });
-      //sort customer transactions and debts by date
-      transactions.sort(compareTransactions);
-      if (transactions.debts) {
-        transactions.debts.sort(compareTransactions);
-      }
-      data.push(customer)
-      data.push(store)
-      data.push(transactions)
-      res.status(200).send({
-        success: true,
-        message: "Customer dashboard data",
-        data: data,
-      });
-
+    const transactions = await transactionModel.find({
+      customer_ref_id: customer._id,
+    });
+    //sort customer transactions and debts by date
+    transactions.sort(compareTransactions);
+    if (transactions.debts) {
+      transactions.debts.sort(compareTransactions);
+    }
+    data.push(customer);
+    data.push(store);
+    data.push(transactions);
+    res.status(200).send({
+      success: true,
+      message: "Customer dashboard data",
+      data: data,
+    });
   } catch (error) {
     res.status(500).send({
       success: false,
