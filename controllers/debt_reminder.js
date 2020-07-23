@@ -8,6 +8,7 @@ const Transaction = require("../models/transaction");
 const { all } = require("../routes/customer");
 const cron = require("node-cron");
 const transaction = require("../models/transaction");
+const code = require("./../util/code_random");
 const africastalking = require("africastalking")({
   apiKey: process.env.AFRICASTALKING_API_KEY,
   username: process.env.AFRICASTALKING_USERNAME
@@ -675,6 +676,36 @@ exports.send = async (req, res) => {
       reminder_message = req.body.message;
     }
 
+    let code_generated  = null;
+    if(req.body.send_link) { 
+      while(!code_generated) {
+        code_generated = code(10, true)
+        const validate = await UserModel.findOne({
+          stores: { 
+            $elemMatch: {
+              customers: { 
+                $elemMatch: {
+                  transactions: {
+                    $elemMatch: {
+                      debts: {
+                        $elemMatch: {
+                          code: code_generated
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } 
+        });
+        if(validate) {
+          code_generated  = null;
+        }
+      }
+      reminder_message += ` customerpay.me/${code_generated}`;
+    }
+
     const reminder = {
       user_phone_number: req.user.phone_number,
       customer_phone_number: customer.phone_number,
@@ -683,7 +714,8 @@ exports.send = async (req, res) => {
       ts_ref_id: transaction._id,
       message: reminder_message,
       status: "sending",
-      expected_pay_date: Date.now()
+      expected_pay_date: Date.now(),
+      code: code_generated
     }
 
     transaction.debts.push(reminder)
