@@ -26,16 +26,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
   }
 
   const storeAdmin = await storeAdminModel.findOne({
-    $or: [
-      {
-        identifier: req.user.phone_number,
-        "local.user_role": req.user.user_role,
-      },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role,
-      },
-    ],
+    identifier: identifier,
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -96,7 +87,6 @@ exports.storeAdminDashboard = async (req, res, next) => {
           })
         );
       }
-      console.log(data.customerCount);
       customers.forEach(async (customer) => {
         const transactions = await transactionModel.find({
           customer_ref_id: customer._id,
@@ -211,7 +201,6 @@ exports.storeAdminDashboard = async (req, res, next) => {
         data.transactions.sort(compareCustomers);
         data.recentTransactions.sort(compareRecentTransactions);
         data.recentDebts.sort(compareRecentDebts);
-        console.log(data.customerCount);
         res.status(200).json({
           success: true,
           message: "Store Admin dashboard data",
@@ -316,9 +305,11 @@ exports.superAdminDashboard = async (req, res) => {
 exports.storeAssistantDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
   const data = {};
-
+  const assistant = await storeAssistantModel.findOne({
+    phone_number: phone_number,
+  });
   const storeAdmin = await storeAdminModel.findOne({
-    "assistants.phone_number": phone_number,
+    _id: assistant.store_admin_ref,
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -331,9 +322,6 @@ exports.storeAssistantDashboard = async (req, res) => {
     });
   }
   try {
-    const assistant = storeAdmin.assistants.find(
-      (assistant) => assistant.phone_number == phone_number
-    );
     data.name = assistant.name;
     data.email = assistant.email;
     data.phone_number = assistant.phone_number;
@@ -349,9 +337,8 @@ exports.storeAssistantDashboard = async (req, res) => {
         },
       });
     }
-    const assistantStore = storeAdmin.stores.find(
-      (store) => store._id == store_id
-    );
+    const assistantStore = await Stores.find({ _id: store_id });
+    const customers = await customerModel.find({ store_ref_id: store_id });
     data.storeName = assistantStore.store_name;
     data.storeAddress = assistantStore.shop_address;
     data.customerCount = 0;
@@ -363,9 +350,12 @@ exports.storeAssistantDashboard = async (req, res) => {
     data.revenueAmount = 0;
     data.receivablesCount = 0;
     data.receivablesAmount = 0;
-    assistantStore.customers.forEach((customer) => {
+    customers.forEach(async (customer) => {
       data.customerCount += 1;
-      customer.transactions.forEach((transaction) => {
+      const transactions = await transactionModel.find({
+        customer_ref_id: customer._id,
+      });
+      transactions.forEach((transaction) => {
         if (transaction.assistant_inCharge == assistant._id) {
           data.transactionCount += 1;
 
@@ -435,26 +425,24 @@ exports.storeAssistantDashboard = async (req, res) => {
 
 exports.customerDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
-  const data = [];
+  const data = {};
   try {
-    const storeAdmin = await storeAdminModel.aggregate([
-      { $unwind: "$stores" },
-      { $unwind: "$stores.customers" },
-      { $match: { "stores.customers.phone_number": phone_number } },
-    ]);
-
-    if (storeAdmin.length == 0) {
+    const customer = await customerModel.findOne({
+      phone_number: phone_number,
+    });
+    if (!customer) {
       res.status(404).send({
         success: false,
-        message: "Customer store has no admin",
+        message: "Customer does not exist",
         error: {
           statusCode: 400,
-          message: "Customer store has no admin",
+          message: "Customer does not exist",
         },
       });
     }
 
-    const store = storeAdmin[0].stores;
+    const store = await Stores.findOne({ _id: customer.store_ref_id });
+
     if (!store) {
       res.status(404).send({
         success: false,
@@ -466,35 +454,21 @@ exports.customerDashboard = async (req, res) => {
       });
     }
 
-    if (storeAdmin.length == 1) {
-      const customer = store.customers;
-      //sort customer transactions and debts by date
-      customer.transactions.sort(compareTransactions);
-      if (customer.transactions.debts) {
-        customer.transactions.debts.sort(compareTransactions);
-      }
-      res.status(200).send({
-        success: true,
-        message: "Customer dashboard data",
-        data: storeAdmin,
-      });
-    }
-
-    storeAdmin.forEach((admin) => {
-      const store = admin.stores;
-      const customer = store.customers;
-      //sort customer transactions and debts by date
-      customer.transactions.sort(compareTransactions);
-      if (customer.transactions.debts) {
-        customer.transactions.debts.sort(compareTransactions);
-      }
-      data.push(admin);
+    const transactions = await transactionModel.find({
+      customer_ref_id: customer._id,
     });
-
+    //sort customer transactions and debts by date
+    transactions.sort(compareTransactions);
+    if (transactions.debts) {
+      transactions.debts.sort(compareTransactions);
+    }
+    data.customer = customer;
+    data.store = store;
+    data.transactions = transactions;
     res.status(200).send({
       success: true,
       message: "Customer dashboard data",
-      data: storeAdmin,
+      data: data,
     });
   } catch (error) {
     res.status(500).send({

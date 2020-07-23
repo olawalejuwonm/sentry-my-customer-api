@@ -1,41 +1,40 @@
 const Store = require("../models/store");
 const UserModel = require("../models/store_admin");
-const {} = require("./login_controler");
+const { errorHandler } = require("./login_controler");
 
 module.exports = () => async (req, res) => {
   try {
-    const { user_role = null, phone_number = null } = req.user;
-
     //  Enable business card feature for only store admin
-    if (!user_role || user_role !== "store_admin") {
+    let store;
+    if (req.user.user_role === "super_admin") {
+      store = await Store.find({}).populate({ path: "store_admin_ref" }).exec();
+    } else if (req.user.user_role === "store_admin") {
+      store = await Store.find({ store_admin_ref: req.user._id })
+        .populate({ path: "store_admin_ref" })
+        .exec();
+    } else {
       return res.status(403).json({
         message: "You can't access this resource",
-        status: 403,
-        user_role: req.user
+        success: false,
+        errorCode: {
+          statusCode: 403,
+        },
       });
     }
 
-    const user = await UserModel.findOne({ identifier: phone_number });
-
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: "Please signin first", status: 401 });
-    }
-
     //  Get all stores owned by user
-    let userStores = await Stores.find({ store_admin_ref: user._id });
+    userStores = store;
 
     //  Iterate through stores and create cards
-    const data = userStores.map(store => {
+    const data = userStores.map((store) => {
       const { store_name, phone_number, email, shop_address } = store;
 
       return {
-        ownerName: `${user.local.first_name} ${user.local.last_name}`,
+        ownerName: `${store.store_admin_ref.local.first_name} ${store.store_admin_ref.local.last_name}`,
         storeName: store_name,
-        email: email || user.local.email,
-        phone: phone_number || user.local.phone_number,
-        storeAddress: shop_address
+        email: email || store.store_admin_ref.local.email,
+        phone: phone_number || store.store_admin_ref.local.phone_number,
+        storeAddress: shop_address,
       };
     });
 
@@ -47,18 +46,6 @@ module.exports = () => async (req, res) => {
       },
     });
   } catch (error) {
-    //  Log error to console for maintenace by developers
-    console.log({ ...error, errorStack: error.stack });
-
-    //  Send server error response and optional dev if in dev mode
-    res.status(500).json({
-      success: false,
-      message: "An internal server error occured",
-      status: 500,
-      error: {
-        statusCode: 500,
-        message: error.message,
-      },
-    });
+    errorHandler(error, res);
   }
 };
