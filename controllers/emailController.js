@@ -16,11 +16,9 @@ module.exports = {
       });
       if (!req.body.store_id || !req.body.html || !req.body.subject) {
         const html = req.body.html ? {} : { html: 'Path "html" is required' },
-          store_id = req.body.store_id
-            ? {}
+          store_id = req.body.store_id ? {}
             : { store_id: 'Path "store_id" is required' },
-          subject = req.body.subject
-            ? {}
+          subject = req.body.subject ? {}
             : { subject: 'Path "subject" is required' };
         return res.status(422).json({
           success: false,
