@@ -26,16 +26,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
   }
 
   const storeAdmin = await storeAdminModel.findOne({
-    $or: [
-      {
-        identifier: req.user.phone_number,
-        "local.user_role": req.user.user_role,
-      },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role,
-      },
-    ],
+    identifier: identifier,
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -96,7 +87,6 @@ exports.storeAdminDashboard = async (req, res, next) => {
           })
         );
       }
-      console.log(data.customerCount);
       customers.forEach(async (customer) => {
         const transactions = await transactionModel.find({
           customer_ref_id: customer._id,
@@ -211,7 +201,6 @@ exports.storeAdminDashboard = async (req, res, next) => {
         data.transactions.sort(compareCustomers);
         data.recentTransactions.sort(compareRecentTransactions);
         data.recentDebts.sort(compareRecentDebts);
-        console.log(data.customerCount);
         res.status(200).json({
           success: true,
           message: "Store Admin dashboard data",
@@ -349,7 +338,7 @@ exports.storeAssistantDashboard = async (req, res) => {
       });
     }
     const assistantStore = await Stores.find({ _id: store_id });
-    const customers = await customerModel.find({ store_ref_id: store._id });
+    const customers = await customerModel.find({ store_ref_id: store_id });
     data.storeName = assistantStore.store_name;
     data.storeAddress = assistantStore.shop_address;
     data.customerCount = 0;
@@ -436,9 +425,11 @@ exports.storeAssistantDashboard = async (req, res) => {
 
 exports.customerDashboard = async (req, res) => {
   const phone_number = req.user.phone_number;
-  const data = [];
+  const data = {};
   try {
-    const customer = await customerModel.find({ phone_number: phone_number });
+    const customer = await customerModel.findOne({
+      phone_number: phone_number,
+    });
     if (!customer) {
       res.status(404).send({
         success: false,
@@ -450,7 +441,7 @@ exports.customerDashboard = async (req, res) => {
       });
     }
 
-    const store = await Stores.find({ _id: customer.store_ref_id });
+    const store = await Stores.findOne({ _id: customer.store_ref_id });
 
     if (!store) {
       res.status(404).send({
@@ -471,9 +462,9 @@ exports.customerDashboard = async (req, res) => {
     if (transactions.debts) {
       transactions.debts.sort(compareTransactions);
     }
-    data.push(customer);
-    data.push(store);
-    data.push(transactions);
+    data.customer = customer;
+    data.store = store;
+    data.transactions = transactions;
     res.status(200).send({
       success: true,
       message: "Customer dashboard data",

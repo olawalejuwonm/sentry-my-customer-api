@@ -2,6 +2,7 @@ var jwt = require("jsonwebtoken");
 var config = process.env;
 const UserModel = require("../models/store_admin");
 const AssistantModel = require("../models/storeAssistant");
+const CustomerModel = require("../models/customer");
 
 const verifyToken = (req, res, next) => {
   var token =
@@ -33,7 +34,18 @@ const verifyToken = (req, res, next) => {
     }
 
     req.user = decoded;
-    if (decoded.user_role.toLowerCase().includes("store_assistant")) {
+    if (!decoded.user_role) {
+      let user = await CustomerModel.findOne({ _id: req.user._id });
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "unauthorized access",
+          errors: {
+            statusCode: 401,
+          },
+        });
+      }
+    } else if (decoded.user_role.toLowerCase().includes("store_assistant")) {
       try {
         let user = await AssistantModel.findOne({ _id: req.user._id });
         if (!user) {
@@ -52,8 +64,7 @@ const verifyToken = (req, res, next) => {
           res
         );
       }
-    }
-    if (decoded.user_role.toLowerCase().includes("store_admin")) {
+    } else if (decoded.user_role.toLowerCase().includes("store_admin")) {
       req.user.store_admin_ref = req.user._id;
     }
     // console.log(req.user);
