@@ -224,11 +224,15 @@ exports.findOneAdmin = async (req, res) => {
       });
     }
 
+    const customerLocal = JSON.parse(JSON.stringify(customer));
+    customerLocal.store_ref_id = store._id
+    customerLocal.store_name = store.store_name
+
     res.status(200).json({
       success: true,
       message: "Customer",
       data: {
-        customer: customer
+        customer: customerLocal
       }
     });
   } catch (error) {
