@@ -19,4 +19,4 @@ const storeSchema = new mongoose.Schema(
   { timestamp: true }
 );
 
-module.exports = mongoose.model("store", storeSchema);
+module.exports = mongoose.model("mycustomer_store", storeSchema);
