@@ -6,8 +6,52 @@ const customerModel = require("../models/customer");
 const transactionModel = require("../models/transaction");
 const transaction = require("../models/transaction");
 
+const util = {
+  //utility functions
+  compareTransactions: (a, b) => {
+    //compares two time stamps and places the earlier timestamp before the other
+    if (a.createdAt.getTime() > b.createdAt.getTime()) return -1;
+    if (b.createdAt.getTime() < a.createdAt.getTime()) return 1;
+
+    return 0;
+  },
+
+  compareCustomers: (a, b) => {
+    //compares two time stamps and places the earlier timestamp before the other
+    if (
+      a.transactions[0].createdAt.getTime() >
+      b.transactions[0].createdAt.getTime()
+    )
+      return -1;
+    if (
+      b.transactions[0].createdAt.getTime() <
+      a.transactions[0].createdAt.getTime()
+    )
+      return 1;
+
+    return 0;
+  },
+
+  compareRecentTransactions: (a, b) => {
+    //compares two time stamps and places the earlier timestamp before the other
+    if (a.transaction.createdAt.getTime() > b.transaction.createdAt.getTime())
+      return -1;
+    if (b.transaction.createdAt.getTime() < a.transaction.createdAt.getTime())
+      return 1;
+
+    return 0;
+  },
+
+  compareRecentDebts: (a, b) => {
+    //compares two time stamps and places the earlier timestamp before the other
+    if (a.debt.createdAt.getTime() > b.debt.createdAt.getTime()) return -1;
+    if (b.debt.createdAt.getTime() < a.debt.createdAt.getTime()) return 1;
+
+    return 0;
+  },
+};
+
 exports.storeAdminDashboard = async (req, res, next) => {
-  const identifier = req.user.phone_number;
   const role = req.user.user_role;
 
   if (role != "store_admin") {
@@ -26,184 +70,148 @@ exports.storeAdminDashboard = async (req, res, next) => {
     });
   }
 
-  const storeAdmin = await storeAdminModel.findOne({
-    identifier: identifier,
-  });
-  if (!storeAdmin) {
-    return res.status(404).json({
-      success: false,
-      message: "User not found",
-      error: {
-        statusCode: 404,
-        message: "User not found",
-      },
-    });
-  }
-
   try {
     const data = {};
-    const stores = await Stores.find({ store_admin_ref: storeAdmin._id });
-    const assistants = await storeAssistantModel.find({
-      store_admin_ref: storeAdmin._id,
-    });
+    const stores = await Stores.find({ store_admin_ref: req.user._id });
 
     //get number of stores
-    data.storeCount = (stores && stores.length) || 0;
+    data.storeCount = stores.length;
     //get number of assisstants
-    data.assistantCount = (assistants && assistants.length) || 0;
-    //initialize customer count, new customers and transactions
-    data.customerCount = 0;
-    data.newCustomers = [];
-    data.transactions = [];
-    data.recentTransactions = [];
-    data.recentDebts = [];
-    data.debtCount = 0;
-    data.debtAmount = 0;
-    data.revenueCount = 0;
-    data.revenueAmount = 0;
-    data.receivablesCount = 0;
-    data.receivablesAmount = 0;
-    data.amountForCurrentMonth = 0;
-    data.amountForPreviousMonth = 0;
-
-    stores.forEach(async (store) => {
-      //increment customer count by number of customers in each store
-      const customers = await customerModel.find({ store_ref_id: store._id });
-
-      data.customerCount = data.customerCount + customers.length;
-
-      let date = new Date();
-      //filter customers array to get all new customers
-      const newCustomers = customers.filter((element) => {
-        return element.createdAt.toDateString() == date.toDateString();
-      });
-
-      if (newCustomers.length > 0) {
-        //push in new customer details into new customers array
-        newCustomers.forEach((element) =>
-          data.newCustomers.push({
-            name: element.name,
-            phone_number: element.phone_number,
-            email: element.email,
-          })
-        );
-      }
-      customers.forEach(async (customer) => {
-        const transactions = await transactionModel.find({
-          customer_ref_id: customer._id,
-        });
-        //push in transaction details for each customer
-        if (transactions.length != 0) {
-          let obj = {};
-          obj.storeName = store.store_name;
-          obj.customerName = customer.name;
-          //sort transactions by date
-          obj.transactions = transactions.sort(compareTransactions);
-          data.transactions.push(obj);
-
-          transactions.forEach((transaction) => {
-            //push in details of each transaction
-            let obj = {};
-            obj.storeName = store.store_name;
-            obj.customerName = customer.name;
-            obj.transaction = transaction;
-            data.recentTransactions.push(obj);
-
-            if (
-              transaction.type.toLowerCase() == "debt" &&
-              transaction.status == false
-            ) {
-              //increment debt count
-              data.debtCount += 1;
-              //increment debt amount
-              try {
-                data.debtAmount += parseFloat(transaction.amount);
-              } catch (error) {
-                data.debtAmount += 0;
-              }
-              //push in details of each debt
-              let obj = {};
-              obj.storeName = store.store_name;
-              obj.customerName = customer.name;
-              obj.debt = transaction;
-              data.recentDebts.push(obj);
-            }
-
-            if (
-              transaction.type.toLowerCase() == "debt" &&
-              transaction.status == true
-            ) {
-              data.revenueCount += 1;
-              let transactionDate = new Date(transaction.createdAt);
-              //get revenue for current month
-              if (date.getMonth() == transactionDate.getMonth()) {
-                try {
-                  data.amountForCurrentMonth += parseFloat(transaction.amount);
-                } catch (error) {
-                  data.amountForCurrentMonth += 0;
-                }
-              }
-
-              //get revenue for previous month
-              if (date.getMonth() - 1 == transactionDate.getMonth()) {
-                try {
-                  data.amountForPreviousMonth += parseFloat(transaction.amount);
-                } catch (error) {
-                  data.amountForPreviousMonth += 0;
-                }
-              }
-
-              //increment revenue amount
-              try {
-                data.revenueAmount += parseFloat(transaction.amount);
-              } catch (error) {
-                data.revenueAmount += 0;
-              }
-            }
-
-            if (transaction.type.toLowerCase() == "paid") {
-              data.revenueCount += 1;
-              let transactionDate = new Date(transaction.createdAt);
-              //get revenue for current month
-              if (date.getMonth() == transactionDate.getMonth()) {
-                try {
-                  data.amountForCurrentMonth += parseFloat(transaction.amount);
-                } catch (error) {
-                  data.amountForCurrentMonth += 0;
-                }
-              }
-
-              //get revenue for previous month
-              if (date.getMonth() - 1 == transactionDate.getMonth()) {
-                try {
-                  data.amountForPreviousMonth += parseFloat(transaction.amount);
-                } catch (error) {
-                  data.amountForPreviousMonth += 0;
-                }
-              }
-
-              try {
-                data.revenueAmount += parseFloat(transaction.amount);
-              } catch (error) {
-                data.revenueAmount += 0;
-              }
-            }
-
-            if (transaction.type.toLowerCase() == "receivables") {
-              data.receivablesCount += 1;
-              try {
-                data.receivablesAmount += parseFloat(transaction.amount);
-              } catch (error) {
-                data.receivablesAmount += 0;
-              }
-            }
-          });
-        }
-        data.transactions.sort(compareCustomers);
-        data.recentTransactions.sort(compareRecentTransactions);
-        data.recentDebts.sort(compareRecentDebts);
-      });
+    data.assistantCount = await storeAssistantModel.countDocuments({
+      store_admin_ref: req.user._id,
     });
+    //initialize customer count, new customers and transactions
+    data.customerCount = await stores.reduce(
+      async (acc, cur) =>
+        (await acc) +
+        (await customerModel.countDocuments({ store_ref_id: cur._id })),
+      0
+    );
+    data.newCustomers = (
+      await stores.reduce(
+        async (acc, cur) => [
+          ...(await acc),
+          ...(await customerModel.find({ store_ref_id: cur._id })),
+        ],
+        []
+      )
+    )
+      .sort(util.compareCustomers)
+      .slice(0, 15);
+    data.transactions = (
+      await transactionModel
+        .find({
+          store_admin_ref: req.user._id,
+        })
+        .populate({ path: "store_ref_id" })
+        .exec()
+    ).reduce((acc, cur) => {
+      return [
+        ...acc,
+        {
+          transaction: {
+            ...cur.toObject(),
+            store_ref_id: (cur.store_ref_id && cur.store_ref_id._id) || "",
+          },
+          storeName:
+            (cur.store_ref_id && cur.store_ref_id.store_name) ||
+            "Unknown store",
+        },
+      ];
+    }, []);
+    data.recentTransactions = data.transactions
+      .sort(util.compareRecentTransactions)
+      .slice(0, 15);
+    data.recentDebts = (
+      await transactionModel.find({
+        store_admin_ref: req.user._id,
+        type: "debt",
+      })
+    )
+      .reduce((acc, cur) => {
+        if (!cur) return acc;
+        return [
+          ...acc,
+          {
+            debt: {
+              ...cur.toObject(),
+              store_ref_id: (cur.store_ref_id && cur.store_ref_id._id) || "",
+            },
+            storeName:
+              (cur.store_ref_id && cur.store_ref_id.store_name) ||
+              "Unknown store",
+          },
+        ];
+      }, [])
+      .sort(util.compareRecentDebts)
+      .slice(0, 15);
+    data.debtCount = (
+      await transactionModel.find({
+        store_admin_ref: req.user._id,
+        type: "debt",
+      })
+    ).reduce((acc, cur) => {
+      if (!cur) return acc;
+      return [
+        ...acc,
+        {
+          debt: cur.toObject(),
+          storeName:
+            (cur.store_ref_id && cur.store_ref_id.store_name) ||
+            "Unknown store",
+        },
+      ];
+    }, []);
+    data.debtAmount = parseInt(
+      data.debtCount.reduce((acc, cur) => acc + cur.debt.amount, 0)
+    );
+    data.revenueCount = data.debtCount.reduce((acc, cur) => {
+      if (!cur.debt.status) return acc;
+      return acc + 1;
+    }, 0);
+    data.revenueAmount = parseInt(
+      data.debtCount.reduce((acc, cur) => {
+        if (!cur.debt.status) return acc;
+        return acc + cur.debt.amount;
+      }, 0)
+    );
+    data.receivablesCount = data.transactions.reduce((acc, cur) => {
+      if (cur.transaction.type !== "receivables") return acc;
+      return acc + 1;
+    }, 0);
+    data.receivablesAmount = parseInt(
+      data.transactions.reduce((acc, cur) => {
+        if (cur.transaction.type !== "receivables") return acc;
+        return acc + cur.transaction.amount;
+      }, 0)
+    );
+    data.amountForCurrentMonth = parseInt(
+      data.debtCount.reduce((acc, cur) => {
+        if (!cur.debt.status) return acc;
+        let date = new Date();
+        let transactionDate = new Date(cur.debt.createdAt);
+        if (
+          date.getMonth() == transactionDate.getMonth() &&
+          date.getFullYear() == transactionDate.getFullYear()
+        ) {
+          return acc + cur.debt.amount;
+        }
+        return acc;
+      }, 0)
+    );
+    data.amountForPreviousMonth = data.debtCount.reduce((acc, cur) => {
+      if (!cur.debt.status) return acc;
+      let date = new Date();
+      let transactionDate = new Date(cur.debt.createdAt);
+      if (
+        date.getMonth() - 1 == transactionDate.getMonth() &&
+        date.getFullYear() == transactionDate.getFullYear()
+      ) {
+        return acc + cur.debt.amount;
+      }
+      return acc;
+    }, 0);
+    data.debtCount = data.debtCount.length;
 
     res.status(200).json({
       success: true,
@@ -484,46 +492,3 @@ exports.customerDashboard = async (req, res) => {
     });
   }
 };
-
-//utility functions
-function compareTransactions(a, b) {
-  //compares two time stamps and places the earlier timestamp before the other
-  if (a.createdAt.getTime() > b.createdAt.getTime()) return -1;
-  if (b.createdAt.getTime() < a.createdAt.getTime()) return 1;
-
-  return 0;
-}
-
-function compareCustomers(a, b) {
-  //compares two time stamps and places the earlier timestamp before the other
-  if (
-    a.transactions[0].createdAt.getTime() >
-    b.transactions[0].createdAt.getTime()
-  )
-    return -1;
-  if (
-    b.transactions[0].createdAt.getTime() <
-    a.transactions[0].createdAt.getTime()
-  )
-    return 1;
-
-  return 0;
-}
-
-function compareRecentTransactions(a, b) {
-  //compares two time stamps and places the earlier timestamp before the other
-  if (a.transaction.createdAt.getTime() > b.transaction.createdAt.getTime())
-    return -1;
-  if (b.transaction.createdAt.getTime() < a.transaction.createdAt.getTime())
-    return 1;
-
-  return 0;
-}
-
-function compareRecentDebts(a, b) {
-  //compares two time stamps and places the earlier timestamp before the other
-  if (a.debt.createdAt.getTime() > b.debt.createdAt.getTime()) return -1;
-  if (b.debt.createdAt.getTime() < a.debt.createdAt.getTime()) return 1;
-
-  return 0;
-}
