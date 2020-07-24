@@ -304,7 +304,8 @@ exports.getSingleStoreAssistant = async (req, res) => {
     data.storeAddress = assistantStore.shop_address
     data.customerCount = 0; 
     data.transactionCount = 0;
-    data.recentTransactions =[]
+    data.recentTransactions =[];
+    data.chart = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     data.debtCount = 0;
     data.debtAmount = 0;
     data.revenueCount = 0;
@@ -324,6 +325,8 @@ exports.getSingleStoreAssistant = async (req, res) => {
           obj.storeName = assistantStore.store_name;
           obj.transaction = transaction;
           data.recentTransactions.push(obj);
+
+          data.chart = util.getTransactionForMonth(obj, data.chart);
 
           if (transaction.type.toLowerCase() == 'debt' && transaction.status == false) {
             data.debtCount += 1;
