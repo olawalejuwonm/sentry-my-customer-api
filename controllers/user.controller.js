@@ -413,8 +413,8 @@ exports.forgot = async (req, res) => {
           let smtpTransport = nodemailer.createTransport({
             service: "gmail",
             auth: {
-              user: "openhand95@gmail.com",
-              pass: "Juwon@1234",
+              user: "fundmycustomer@gmail.com",
+              pass: "Omo@1234",
             },
           });
           let mailOptions = {

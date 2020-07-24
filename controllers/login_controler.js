@@ -25,6 +25,7 @@ module.exports.errorHandler = (error, res) => {
     message = "invalid id";
     status = 400;
   }
+  console.log("The Error", error, "The response", res)
   return res.status(status).json({
     success: false,
     message,
