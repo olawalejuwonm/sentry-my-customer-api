@@ -1,4 +1,5 @@
 const Transaction = require("../models/transaction");
+const DebtReminders = require("../models/debt_reminders");
 const UserModel = require("../models/store_admin");
 const StoreModel = require("../models/store");
 const Customer = require("../models/customer");
@@ -303,18 +304,15 @@ exports.findOne = (passOnReq = false) => async (req, res, next) => {
       req.transaction = transaction;
       return next();
     }
-
     transaction = transaction.toObject();
-    transaction.store_name = transaction.store_ref_id.store_name || "Unknown";
-    transaction.total_amount =
-      transaction.total_amount ||
-      transaction.total_amount +
-        (transaction.total_amount * transaction.interest) / 100;
-    transaction.store_ref_id = transaction.store_ref_id._id;
-    transaction = Object.keys(transaction).reduce(
-      (acc, cur) => ({ ...acc, [cur]: JSON.stringify(transaction[cur]) }),
-      {}
-    );
+    transaction.store_name =
+      (transaction.store_ref_id && transaction.store_ref_id.store_name) ||
+      "Unknown";
+    transaction.store_ref_id =
+      (transaction.store_ref_id && transaction.store_ref_id._id) || "unknown";
+    transaction.debts = await DebtReminders.find({
+      trans_ref_id: transaction._id,
+    });
     return res.status(200).json({
       success: true,
       message: "Transaction",

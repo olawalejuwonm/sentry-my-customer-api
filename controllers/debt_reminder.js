@@ -140,15 +140,15 @@ exports.getById = async (req, res) => {
   try {
     let debt;
     if (req.user.user_role === "super_admin") {
-      debt = await Transaction.find({
+      debt = await Transaction.findOne({
         type: "debt",
         _id: req.params.transactionId,
       });
     } else {
-      debt = await Transaction.find({
+      debt = await Transaction.findOne({
         _id: req.params.transactionId,
-        typs: "debt",
-        $or: [{ store_admin_id: req.user._id }, { assistant: req.user._id }],
+        type: "debt",
+        store_admin_id: req.user.store_admin_id,
       });
     }
     if (!debt) {
@@ -178,15 +178,15 @@ exports.markAsPaid = async (req, res) => {
   try {
     let debt;
     if (req.user.user_role === "super_admin") {
-      debt = await Transaction.find({
+      debt = await Transaction.findOne({
         type: "debt",
         _id: req.params.transactionId,
       });
     } else {
-      debt = await Transaction.find({
+      debt = await Transaction.findOne({
         _id: req.params.transactionId,
-        typs: "debt",
-        $or: [{ store_admin_id: req.user._id }, { assistant: req.user._id }],
+        type: "debt",
+        store_admin_id: req.user.store_admin_id,
       });
     }
     if (!debt) {
@@ -264,6 +264,16 @@ exports.send = async (req, res) => {
         to = "+234" + to;
       }
     }
+    await Debt.create({
+      trans_ref_id: debt._id,
+      store_ref_id: debt.store_ref._id,
+      status: false,
+      expected_pay_date: debt.expected_pay_date,
+      message,
+      amount,
+      name: debt.customer_ref_id.name,
+      store_admin_id: req.user.store_admin_id,
+    });
     const sms = await africastalking.SMS;
     sms.send({
       to,
