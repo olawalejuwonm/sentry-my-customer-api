@@ -44,10 +44,10 @@ mongoose
     //  Populate DB With super admin
     const handle = require("./models/store_admin");
     const super_user = await handle.findOne({
-      local: { user_role: "super_admin" },
+      identifier: 2348032252161,
     });
     if (super_user) {
-      console.log("super user exists");
+      return console.log("super user exists");
     } else {
       console.log("creating super user");
       await handle.create({

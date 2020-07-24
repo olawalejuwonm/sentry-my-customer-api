@@ -789,22 +789,7 @@ exports.activateUser = async (req, res) => {
 // super admin access to view all store admins in the database
 
 exports.getAllStoreAdmin = async (req, res, next) => {
-  let id = req.user.phone_number;
-  let user = await User.findOne({ identifier: id });
-  // check if user exists
-  if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: "User not found",
-      error: {
-        statusCode: 404,
-        message: "User not found",
-      },
-    });
-  }
-
-  // check if user is a super admin
-  if (user.local.user_role !== "super_admin") {
+  if (req.user.user_role !== "super_admin") {
     return res.status(401).json({
       success: false,
       message: "Unauthorised, resource can only accessed by Super Admin",
