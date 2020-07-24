@@ -1,6 +1,7 @@
 const Store = require("./../models/store");
 const UserModel = require("../models/store_admin");
 const CustomerModel = require("../models/customer");
+const Assistants = require("../models/storeAssistant");
 const { errorHandler } = require("./login_controler");
 const TransactionModel = require("../models/transaction");
 
@@ -140,7 +141,8 @@ exports.getStore = async (req, res) => {
         return { ...customer.toObject(), transactions };
       })
     );
-    store = { tagline: "Not Set", ...store.toObject(), customers };
+    let assistants = await Assistants.find({ store_ref_id: store._id });
+    store = { tagline: "Not Set", ...store.toObject(), customers, assistants };
     return res.status(200).json({
       success: true,
       message: "Operation successful",
