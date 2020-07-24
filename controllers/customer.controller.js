@@ -164,10 +164,19 @@ exports.updateById = async (req, res) => {
 
 //newly added
 exports.findOneAdmin = async (req, res) => {
+  // {
+  //   phone_number: '08145156235',
+  //   password: '$2a$10$hD.0n7SIfdhm0WjyW8l4S.hUHOFm9.vUeX5lsHoIV9o7NNh4ZrqwC',
+  //   user_role: 'store_admin',
+  //   _id: '5f104bee46f6dc12f8343d6c',
+  //   iat: 1595607127,
+  //   exp: 1595693527,
+  //   store_admin_ref: '5f104bee46f6dc12f8343d6c'
+  // }
   try {
     const identifier = req.user.phone_number;
     const admin = await UserModel.findOne({ identifier });
-    if (!admin || admin.local.user_role !== "super_admin") {
+    if (!admin || req.user.user_role !== "super_admin") {
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -322,7 +331,7 @@ exports.findAllAdmin = async (req, res) => {
   try {
     const identifier = req.user.phone_number;
     const admin = await UserModel.findOne({ identifier });
-    if (!admin || admin.local.user_role !== "super_admin") {
+    if (!admin || req.user.user_role !== "super_admin") {
       return res.status(404).json({
         success: false,
         message: "User not found",

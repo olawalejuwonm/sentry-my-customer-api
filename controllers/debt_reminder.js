@@ -7,8 +7,6 @@ const mongoose = require("mongoose");
 const Transaction = require("../models/transaction");
 const { all } = require("../routes/customer");
 const cron = require("node-cron");
-const transaction = require("../models/transaction");
-const code = require("./../util/code_random");
 const africastalking = require("africastalking")({
   apiKey: process.env.AFRICASTALKING_API_KEY,
   username: process.env.AFRICASTALKING_USERNAME,
