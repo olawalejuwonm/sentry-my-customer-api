@@ -1,4 +1,5 @@
 const Transaction = require("../models/transaction");
+const DebtReminders = require("../models/debt_reminders");
 const UserModel = require("../models/store_admin");
 const StoreModel = require("../models/store");
 const Customer = require("../models/customer");
@@ -212,8 +213,6 @@ exports.findAllAdmin = async (req, res) => {
   }
 };
 
-
-
 // Find a single transaction with a transaction_id
 exports.findOne = (passOnReq = false) => async (req, res, next) => {
   try {
@@ -221,12 +220,16 @@ exports.findOne = (passOnReq = false) => async (req, res, next) => {
     if ((req.user.user_role = "super_admin")) {
       transaction = await Transaction.findOne({
         _id: req.params.transaction_id,
-      });
+      })
+        .populate({ path: "store_ref_id" })
+        .exec();
     } else {
       transaction = await Transaction.findOne({
         _id: req.params._id,
         store_admin_ref: req.user.store_admin_ref,
-      });
+      })
+        .populate({ path: "store_ref_id" })
+        .exec();
     }
     if (!transaction) {
       return res.status(404).json({
@@ -242,6 +245,15 @@ exports.findOne = (passOnReq = false) => async (req, res, next) => {
       req.transaction = transaction;
       return next();
     }
+    transaction = transaction.toObject();
+    transaction.store_name =
+      (transaction.store_ref_id && transaction.store_ref_id.store_name) ||
+      "Unknown";
+    transaction.store_ref_id =
+      (transaction.store_ref_id && transaction.store_ref_id._id) || "unknown";
+    transaction.debts = await DebtReminders.find({
+      trans_ref_id: transaction._id,
+    });
     return res.status(200).json({
       success: true,
       message: "Transaction",
