@@ -405,6 +405,31 @@ exports.storeAssistantDashboard = async (req, res) => {
             } catch (error) {
               data.revenueAmount += 0;
             }
+
+            let date = new Date();
+            let transactionDate = new Date(transaction.createdAt);
+            //get revenue for current month
+            if (date.getMonth() == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) 
+            {
+              try {
+                data.amountForCurrentMonth += parseFloat(transaction.amount);
+              } catch (error) {
+                data.amountForCurrentMonth += 0;
+              }
+            }
+
+            //get revenue for previous month
+            if (date.getMonth()-1 == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) {
+              try {
+                data.amountForPreviousMonth += parseFloat(transaction.amount);
+              } catch (error) {
+                data.amountForPreviousMonth += 0;
+              }
+            }
           }
           if (transaction.type.toLowerCase() == "receivables") {
             data.receivablesCount += 1;
@@ -495,3 +520,46 @@ exports.customerDashboard = async (req, res) => {
     });
   }
 };
+
+// //utility functions
+// function compareTransactions(a, b) {
+//   //compares two time stamps and places the earlier timestamp before the other
+//   if (a.createdAt.getTime() > b.createdAt.getTime()) return -1;
+//   if (b.createdAt.getTime() < a.createdAt.getTime()) return 1;
+
+//   return 0;
+// }
+
+// function compareCustomers(a, b) {
+//   //compares two time stamps and places the earlier timestamp before the other
+//   if (
+//     a.transactions[0].createdAt.getTime() >
+//     b.transactions[0].createdAt.getTime()
+//   )
+//     return -1;
+//   if (
+//     b.transactions[0].createdAt.getTime() <
+//     a.transactions[0].createdAt.getTime()
+//   )
+//     return 1;
+
+//   return 0;
+// }
+
+// function compareRecentTransactions(a, b) {
+//   //compares two time stamps and places the earlier timestamp before the other
+//   if (a.transaction.createdAt.getTime() > b.transaction.createdAt.getTime())
+//     return -1;
+//   if (b.transaction.createdAt.getTime() < a.transaction.createdAt.getTime())
+//     return 1;
+
+//   return 0;
+// }
+
+// function compareRecentDebts(a, b) {
+//   //compares two time stamps and places the earlier timestamp before the other
+//   if (a.debt.createdAt.getTime() > b.debt.createdAt.getTime()) return -1;
+//   if (b.debt.createdAt.getTime() < a.debt.createdAt.getTime()) return 1;
+
+//   return 0;
+// }
