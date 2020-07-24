@@ -40,5 +40,20 @@ module.exports ={
     if (b.debt.createdAt.getTime() < a.debt.createdAt.getTime()) return 1;
   
     return 0;
+  },
+
+  getTransactionForMonth: (obj, data) => {
+    try {
+      const transactionDate = new Date(obj.transaction.createdAt);
+      const currentDate = new Date();
+      if(currentDate.getFullYear() == transactionDate.getFullYear()){
+       data[transactionDate.getMonth()] += parseFloat(obj.transaction.amount)
+      }
+    } catch (error) {
+      data[0] += 0
+    }
+    
+    return data
+
   }
 }

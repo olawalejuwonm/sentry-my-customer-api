@@ -59,6 +59,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.transactions = [];
     data.recentTransactions = [];
     data.recentDebts = [];
+    data.chart = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     data.debtCount = 0;
     data.debtAmount = 0;
     data.revenueCount = 0;
@@ -67,6 +68,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.receivablesAmount = 0;
     data.amountForCurrentMonth = 0;
     data.amountForPreviousMonth = 0;
+    data.count = 0
 
     stores.forEach(store => {
       //increment customer count by number of customers in each store
@@ -98,6 +100,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
           //sort transactions by date
           obj.transactions = customer.transactions.sort(util.compareTransactions);
           data.transactions.push(obj);
+          
 
           const transactions = customer.transactions;
           transactions.forEach(transaction => {
@@ -107,6 +110,8 @@ exports.storeAdminDashboard = async (req, res, next) => {
             obj.customerName = customer.name;
             obj.transaction = transaction;
             data.recentTransactions.push(obj);
+
+            data.chart = util.getTransactionForMonth(obj, data.chart);
 
             if (transaction.type.toLowerCase() == "debt" && transaction.status == false) {
               //increment debt count
@@ -333,7 +338,8 @@ exports.storeAssistantDashboard = async (req, res) => {
     data.storeAddress = assistantStore.shop_address
     data.customerCount = 0; 
     data.transactionCount = 0;
-    data.recentTransactions =[]
+    data.recentTransactions =[];
+    data.chart = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     data.debtCount = 0;
     data.debtAmount = 0;
     data.revenueCount = 0;
@@ -353,6 +359,8 @@ exports.storeAssistantDashboard = async (req, res) => {
           obj.storeName = assistantStore.store_name;
           obj.transaction = transaction;
           data.recentTransactions.push(obj);
+
+          data.chart = util.getTransactionForMonth(obj, data.chart);
 
           if (transaction.type.toLowerCase() == 'debt' && transaction.status == false) {
             data.debtCount += 1;
