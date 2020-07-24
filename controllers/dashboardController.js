@@ -163,7 +163,10 @@ exports.storeAdminDashboard = async (req, res, next) => {
       ];
     }, []);
     data.debtAmount = parseInt(
-      data.debtCount.reduce((acc, cur) => acc + cur.debt.amount, 0)
+      data.debtCount.reduce(
+        (acc, cur) => acc + parseFloat(cur.debt.amount) || 0,
+        0
+      )
     );
     data.revenueCount = data.debtCount.reduce((acc, cur) => {
       if (!cur.debt.status) return acc;
@@ -172,7 +175,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.revenueAmount = parseInt(
       data.debtCount.reduce((acc, cur) => {
         if (!cur.debt.status) return acc;
-        return acc + cur.debt.amount;
+        return acc + parseFloat(cur.debt.amount) || 0;
       }, 0)
     );
     data.receivablesCount = data.transactions.reduce((acc, cur) => {
@@ -182,7 +185,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.receivablesAmount = parseInt(
       data.transactions.reduce((acc, cur) => {
         if (cur.transaction.type !== "receivables") return acc;
-        return acc + cur.transaction.amount;
+        return acc + parseFloat(cur.transaction.amount) || 0;
       }, 0)
     );
     data.amountForCurrentMonth = parseInt(
@@ -194,7 +197,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
           date.getMonth() == transactionDate.getMonth() &&
           date.getFullYear() == transactionDate.getFullYear()
         ) {
-          return acc + cur.debt.amount;
+          return acc + parseFloat(cur.debt.amount) || 0;
         }
         return acc;
       }, 0)
@@ -207,7 +210,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
         date.getMonth() - 1 == transactionDate.getMonth() &&
         date.getFullYear() == transactionDate.getFullYear()
       ) {
-        return acc + cur.debt.amount;
+        return acc + parseFloat(cur.debt.amount) || 0;
       }
       return acc;
     }, 0);
