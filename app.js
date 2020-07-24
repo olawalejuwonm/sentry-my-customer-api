@@ -39,8 +39,30 @@ mongoose
     useCreateIndex: true,
     useFindAndModify: false,
   })
-  .then(() => {
+  .then(async () => {
     console.log("Successfully connected to the database");
+    //  Populate DB With super admin
+    const handle = require("./models/store_admin");
+    const super_user = await handle.findOne({
+      local: { user_role: "super_admin" },
+    });
+    if (super_user) {
+      console.log("super user exists");
+    } else {
+      console.log("creating super user");
+      await handle.create({
+        identifier: 2348032252161,
+        local: {
+          phone_number: 2348032252161,
+          first_name: "Super",
+          last_name: "Administrator",
+          email: "super@customerpay.me",
+          is_active: true,
+          password: await require("bcryptjs").hash("password", 10),
+          user_role: "super_admin",
+        },
+      });
+    }
   })
   .catch((err) => {
     console.log("Could not connect to the database. Exiting now...", err);
