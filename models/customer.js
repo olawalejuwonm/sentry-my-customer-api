@@ -1,5 +1,4 @@
-const mongoose = require("mongoose"),
-  Transaction = require("./transaction");
+const mongoose = require("mongoose");
 
 const customerSchema = new mongoose.Schema(
   {
