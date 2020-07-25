@@ -40,6 +40,15 @@ exports.create = async (req, res) => {
         // ); // find the necessary store form user.stores
 
         const wantedStore = user.stores.id(store_id);
+        if(!wantedStore) {
+          return res.status(404).json({
+            success: false,
+            error: {
+              statusCode: 404,
+              error: "Store not found"
+            }
+          });
+        }
 
         let customerToReg = { phone_number, email, name }; // customer to register
         let customerExists = wantedStore.customers.find(
