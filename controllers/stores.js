@@ -2,8 +2,44 @@ const Store = require("./../models/store");
 const UserModel = require("../models/store_admin");
 const CustomerModel = require("../models/customer");
 const Assistants = require("../models/storeAssistant");
-const { errorHandler } = require("./login_controler");
 const TransactionModel = require("../models/transaction");
+
+const { errorHandler } = require("./login_controler");
+const { customerService } = require("./customer.controller");
+const { assistantService } = require("./storeAssistant");
+
+const storeService = {
+  getAllStores: async (params) => {
+    let stores = await Store.find(params);
+    stores = await stores.reduce(async (acc, cur) => {
+      acc = await acc;
+      let customers = await customerService.getCustomers({
+        store_ref_id: cur._id,
+      });
+      let assistants = await assistantService.getAllAssistants({
+        store_ref_id: cur._id,
+      });
+      return [...acc, [{ ...cur.toObject(), customers, assistants }]];
+    }, []);
+    return stores;
+  },
+  getOneStore: async (param) => {
+    let store = await Store.findOne(param);
+    if (!store) return store;
+    store = await store.toObject();
+    return {
+      ...store,
+      customers: await customerService.getCustomers({
+        store_ref_id: store._id,
+      }),
+      assistants: await assistantService.getAllAssistants({
+        store_ref_id: store._id,
+      }),
+    };
+  },
+};
+
+exports.storeService = storeService;
 
 exports.createStore = async (req, res) => {
   if (req.body.store_name === "" || req.body.shop_address === "") {
@@ -33,18 +69,12 @@ exports.getAllStores = async (req, res) => {
   try {
     let stores;
     if (req.user.user_role === "super_admin") {
-      stores = await Store.find();
+      stores = await storeService.getAllStores({});
     } else {
-      stores = await Store.find({
+      stores = await storeService.getAllStores({
         store_admin_ref: req.user.store_admin_ref,
       });
     }
-    stores = await Promise.all(
-      stores.map(async (elem) => {
-        let customers = await CustomerModel.find({ store_ref_id: elem._id });
-        return { ...elem.toObject(), customers };
-      })
-    );
     res.status(200).json({
       success: true,
       result: stores.length,
