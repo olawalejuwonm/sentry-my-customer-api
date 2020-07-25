@@ -57,10 +57,10 @@ module.exports.loginUser = async (req, res, next) => {
             } else {
               res.status(401).json({
                 success: false,
-                message: "Invalid Password.",
+                message: "Invalid credentials.",
                 error: {
                   code: 401,
-                  description: "Invalid Password",
+                  description: "Invalid credentials",
                 },
               });
             }
@@ -126,10 +126,10 @@ module.exports.loginUser = async (req, res, next) => {
                           } else {
                             return res.status(401).json({
                               success: false,
-                              message: "Invalid Password.",
+                              message: "Invalid credentials.",
                               error: {
                                 code: 401,
-                                description: "Invalid Password",
+                                description: "Invalid credentials",
                               },
                             });
                           }
@@ -217,10 +217,10 @@ module.exports.loginAssistant = async (req, res, next) => {
                   } else {
                     return res.status(401).json({
                       success: false,
-                      message: "Invalid Password.",
+                      message: "Invalid credentials.",
                       error: {
                         code: 401,
-                        description: "Invalid Password",
+                        description: "Invalid credentials",
                       },
                     });
                   }
@@ -301,7 +301,7 @@ module.exports.loginCustomer = async (req, res, next) => {
         });
       } else {
         res.json({
-          message: "Invalid phone number.",
+          message: "Invalid credentials.",
           Status: false,
         });
       }
