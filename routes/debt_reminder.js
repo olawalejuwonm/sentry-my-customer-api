@@ -30,6 +30,6 @@ router.get("/debt/single/:transactionId", auth, debt.getById);
 router.post("/debt/send/:store_id/:customer_id/:transaction_id", auth, debt.send);
 
 //schedule reminder body:{ transaction_id, message(optional), scheduleDate, time }
-router.post("/debt/schedule", auth, debt.schedule);
+router.post("/debt/schedule/:store_id/:customer_id/:transaction_id", auth, debt.schedule);
 
 module.exports = router;
