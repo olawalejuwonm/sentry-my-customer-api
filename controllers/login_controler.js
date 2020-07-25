@@ -154,7 +154,7 @@ module.exports.loginCustomer = async (req, res, next) => {
         });
       } else {
         res.json({
-          message: "Invalid phone number.",
+          message: "Invalid credentials.",
           success: false,
         });
       }
