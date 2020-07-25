@@ -242,7 +242,7 @@ exports.allCustomers = async (req, res) => {
       });
     }
     let customers = await Customer.find({});
-    customers = Promise.all(
+    customers = await Promise.all(
       customers.map(async (customer) => {
         customer = customer.toObject();
         let transactions = await Transaction.find({
