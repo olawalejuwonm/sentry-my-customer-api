@@ -5,6 +5,7 @@ const Debts = require("../models/debt_reminders");
 const { body } = require("express-validator/check");
 const Customer = require("../models/customer");
 const { errorHandler } = require("./login_controler");
+const { storeService } = require("./stores");
 
 const transactionService = {
   getDebts: (params) => {
@@ -38,6 +39,16 @@ const customerService = {
       })
     );
     return customers;
+  },
+  getOneCustomer: async (params) => {
+    let customer = await Customer.findOne(params);
+    if (!customer) return customer;
+    return {
+      ...customer.toObject(),
+      transactions: await transactionService.getTransactions({
+        customer_ref_id: customer._id,
+      }),
+    };
   },
 };
 
@@ -110,10 +121,17 @@ exports.create = async (req, res) => {
 
 exports.getById = async (req, res) => {
   try {
-    let store = await StoreModel.findOne({
-      _id: req.params.storeId,
-      store_admin_ref: req.user.store_admin_ref,
-    });
+    let store;
+    if (req.user.user_role === "super_admin") {
+      store = await StoreModel.findOne({
+        _id: req.params.storeId,
+      });
+    } else {
+      store = await StoreModel.findOne({
+        _id: req.params.storeId,
+        $or: [{ store_admin_ref: req.user._id }, { _id: req.user.store_id }],
+      });
+    }
     if (!store) {
       return res.status(404).json({
         status: false,
@@ -124,7 +142,7 @@ exports.getById = async (req, res) => {
         },
       });
     }
-    let customer = await Customer.findOne({
+    let customer = await customerService.getOneCustomer({
       store_ref_id: store._id,
       _id: req.params.customerId,
     });

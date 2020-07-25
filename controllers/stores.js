@@ -23,7 +23,23 @@ const storeService = {
     }, []);
     return stores;
   },
+  getOneStore: async (param) => {
+    let store = await Store.findOne(param);
+    if (!store) return store;
+    store = await store.toObject();
+    return {
+      ...store,
+      customers: await customerService.getCustomers({
+        store_ref_id: store._id,
+      }),
+      assistants: await assistantService.getAllAssistants({
+        store_ref_id: store._id,
+      }),
+    };
+  },
 };
+
+exports.storeService = storeService;
 
 exports.createStore = async (req, res) => {
   if (req.body.store_name === "" || req.body.shop_address === "") {
