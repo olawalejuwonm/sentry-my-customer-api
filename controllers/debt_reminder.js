@@ -785,98 +785,163 @@ exports.send = async (req, res) => {
 };
 
 // Schedule reminder route
-exports.schedule = (req, res) => {
-  const { transaction_id, message, scheduleDate, time } = req.body;
+exports.schedule = async (req, res) => {
+  try {
+    let to, store_name, amount, reminder_message;
+    
+    const { scheduleDate, time } = req.body;
+    if (!scheduleDate || !time) {
+      return res.send(400).json({
+        success: false,
+        Message: "Please provide the valid parameters",
+        error: {
+          errorCode: "400",
+          Message: "Please provide the valid parameters"
+        }
+      });
+    }
 
-  if (!scheduleDate || !time || !transaction_id) {
-    return res.send(400).json({
+    const user = await UserModel.findOne({
+      $or: [
+        { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+        {
+          "assistants.phone_number": req.user.phone_number,
+          "assistants.user_role": req.user.user_role
+        }
+      ]
+    });
+
+    const store = user.stores.find(store => store._id == req.params.store_id);
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: "Store not found",
+        data: {
+          statusCode: 404,
+          message: "Store not found"
+        }
+      });
+    }
+
+    const customer = store.customers.find(
+      customer => customer._id == req.params.customer_id
+    );
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+        data: {
+          statusCode: 404,
+          message: "Customer not found"
+        }
+      });
+    }
+
+    const transaction = customer.transactions.find(
+      transactions => transactions._id == req.params.transaction_id
+    );
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+        data: {
+          statusCode: 404,
+          message: "Transaction not found"
+        }
+      });
+    }
+
+    to = customer.phone_number;
+    amount = transaction.amount;
+    store_name = store.store_name;
+
+    if (req.body.message == undefined) {
+      reminder_message = `You have an unpaid debt of ${amount} Naira in ${store_name}`;
+    } else {
+      reminder_message = req.body.message;
+    }
+
+    let code_generated  = null;
+
+    const reminder = {
+      user_phone_number: req.user.phone_number,
+      customer_phone_number: customer.phone_number,
+      name: customer.name,
+      amount: transaction.amount,
+      ts_ref_id: transaction._id,
+      message: reminder_message,
+      status: "sending",
+      expected_pay_date: Date.now(),
+      code: code_generated
+    }
+
+    transaction.debts.push(reminder)
+    await user.save()
+
+    if (!regex.test(to)) {
+      if (to.charAt(0) == "0") {
+        to = to.slice(1);
+        to = "+234" + to;
+      } else {
+        to = "+" + to;
+      }
+    }
+
+    let h = time.slice(0, 2);
+    let m = time.slice(3, 5);
+    let mo = scheduleDate.slice(5, 7);
+    let d = scheduleDate.slice(8);
+    console.log(new Date(), "hora", h, "minuto", m, "dia", d, "mes", mo)
+
+    const send = cron.schedule(`0 ${m} ${h} ${d} ${mo} *`, () => {
+      const sms = africastalking.SMS;
+      sms
+        .send({
+          to,
+          message: reminder_message
+        })
+        .then(response => {
+          console.log("Se envió")
+          if (response.SMSMessageData.Message == "Sent to 0/1 Total Cost: 0") {
+            console.log("Error")
+          } else {
+            let reminderStatus = transaction.debts.find(debt => {
+              if(debt.expected_pay_date.getTime() === reminder.expected_pay_date) {
+                return true
+              }
+              return false
+            })
+            if(!reminderStatus) {
+              console.log("reminderStatus not found")
+            } else {
+              reminderStatus.status = "sent"
+              user.save()
+            }
+            console.log("Sent")
+          }
+        })
+        .catch(err => {
+          console.log(err);
+          res.send( err);
+        });
+    });
+    res.status(200).json({
+      success: true,
+      Message: "Reminder Scheduled",
+      details: {
+        to,
+        reminder_message
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
       success: false,
-      Message: "Please provide the valid parameters",
-      error: {
-        errorCode: "400",
-        Message: "Please provide the valid parameters"
+      message: "Something went wrong",
+      data: {
+        statusCode: 500,
+        message: error
       }
     });
   }
-  let identifier = req.user.phone_number;
-  let to, store_name, amount, reminder_message;
-
-  UserModel.findOne({
-    $or: [
-      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
-  })
-    .then(user => {
-      user.stores.forEach(store => {
-        store.customers.forEach(customer => {
-          customer.transactions.forEach(transaction => {
-            if (transaction._id == transaction_id) {
-              to = customer.phone_number;
-              amount = transaction.total_amount;
-              store_name = store.store_name;
-            }
-          });
-        });
-      });
-
-      if (!message) {
-        reminder_message = `You have an unpaid debt of ${amount} Naira in ${store_name}`;
-      } else {
-        reminder_message = message;
-      }
-
-      if (!regex.test(to)) {
-        if (to.charAt(0) == "0") {
-          to = to.slice(1);
-          to = "+234" + to;
-        } else if (to.charAt(0) == "2") {
-          to = "+" + to;
-        } else {
-          to = "+234" + to;
-        }
-      }
-
-      let h = time.slice(0, 2);
-      let m = time.slice(3);
-      let d = scheduleDate.slice(0, 2);
-      let mo = scheduleDate.slice(3, 5);
-
-      const send = cron.schedule(`${m} ${h} ${d} ${mo} *`, () => {
-        const sms = africastalking.SMS;
-        sms
-          .send({
-            to,
-            message: reminder_message
-          })
-          .then(response => {
-            console.log(response);
-            send.destroy();
-          })
-          .catch(err => {
-            console.log(err);
-          });
-      });
-      res.status(200).json({
-        success: true,
-        Message: "Reminder Scheduled",
-        details: {
-          to,
-          reminder_message
-        }
-      });
-    })
-    .catch(err => {
-      res.status(500).json({
-        sucess: false,
-        message: "Something went wrong",
-        error: {
-          statusCode: 500,
-          message: err.message
-        }
-      });
-    });
 };
