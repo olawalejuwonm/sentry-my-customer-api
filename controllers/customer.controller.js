@@ -12,13 +12,22 @@ exports.validate = method => {
 };
 
 exports.create = async (req, res) => {
-  const identifier = req.user.phone_number;
-
   const { phone_number, email, name, store_id } = req.body;
 
   //get current user's id and add a new customer to it
   try {
-    UserModel.findOne({ identifier })
+    UserModel.findOne({
+      $or: [
+        {
+          identifier: req.user.phone_number,
+          "local.user_role": req.user.user_role
+        },
+        {
+          "assistants.phone_number": req.user.phone_number,
+          "assistants.user_role": req.user.user_role
+        }
+      ]
+    })
       .then(user => {
         if (user.stores.length == 0) {
           return res.status(403).json({
@@ -101,7 +110,10 @@ exports.getById = (req, res) => {
   let customers;
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+      {
+        identifier: req.user.phone_number,
+        "local.user_role": req.user.user_role
+      },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
@@ -146,6 +158,93 @@ exports.getById = (req, res) => {
         }
       });
     });
+};
+
+exports.findOneAdmin = async (req, res) => {
+  try {
+    const identifier = req.user.phone_number;
+    const admin = await UserModel.findOne({ identifier });
+    if (!admin || admin.local.user_role !== "super_admin") {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: {
+          statusCode: 404,
+          message: "User not found"
+        }
+      });
+    }
+
+    const user = await UserModel.findOne({
+      stores: { 
+        $elemMatch: { 
+          _id: req.params.storeId,
+          customers: { 
+            $elemMatch: {
+              _id: req.params.customerId
+            }
+          }
+        }
+      } 
+    });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+        data: {
+          statusCode: 404,
+          message: "Transaction not found"
+        }
+      });
+    }
+
+    const store = user.stores.find(store => store._id == req.params.storeId);
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: "Store not found",
+        data: {
+          statusCode: 404,
+          message: "Store not found"
+        }
+      });
+    }
+
+    const customer = store.customers.find(
+      customer => customer._id == req.params.customerId
+    );
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+        data: {
+          statusCode: 404,
+          message: "Customer not found"
+        }
+      });
+    }
+
+    const customerLocal = JSON.parse(JSON.stringify(customer));
+    customerLocal.store_ref_id = store._id
+    customerLocal.store_name = store.store_name
+
+    res.status(200).json({
+      success: true,
+      message: "Customer",
+      data: {
+        customer: customerLocal
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrongr",
+      data: {
+        statusCode: 500,
+        message: error
+      }
+    });
+  }
 };
 
 exports.updateById = (req, res) => {
@@ -269,7 +368,10 @@ exports.getAll = async (req, res) => {
   const identifier = req.user.phone_number;
   UserModel.findOne({
     $or: [
-      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+      {
+        identifier: req.user.phone_number,
+        "local.user_role": req.user.user_role
+      },
       {
         "assistants.phone_number": req.user.phone_number,
         "assistants.user_role": req.user.user_role
@@ -307,4 +409,57 @@ exports.getAll = async (req, res) => {
         }
       });
     });
+};
+
+exports.findAllAdmin = async (req, res) => {
+  try {
+    const identifier = req.user.phone_number;
+    const admin = await UserModel.findOne({ identifier });
+    if (!admin || admin.local.user_role !== "super_admin") {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: {
+          statusCode: 404,
+          message: "User not found"
+        }
+      });
+    }
+
+    const users = await UserModel.find();
+    if (!users) {
+      return res.status(404).json({
+        success: false,
+        message: "Users not found",
+        data: {
+          statusCode: 404,
+          message: "Users not found"
+        }
+      });
+    }
+
+    let customers = [];
+    users.forEach(user => {
+      user.stores.forEach(store => {
+        customers = customers.concat(store.customers);
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Customers",
+      data: {
+        customers: customers
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: {
+        statusCode: 500,
+        message: error
+      }
+    });
+  }
 };

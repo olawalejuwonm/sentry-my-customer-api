@@ -342,7 +342,7 @@ exports.findAllAdmin = async (req, res) => {
   try {
     const identifier = req.user.phone_number;
     const admin = await UserModel.findOne({ identifier });
-    if (!admin || admin.user_role !== "super_admin") {
+    if (!admin || admin.local.user_role !== "super_admin") {
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -365,15 +365,15 @@ exports.findAllAdmin = async (req, res) => {
       });
     }
 
-    let transactions;
+    let transactions = [];
     users.forEach(user => {
       user.stores.forEach(store => {
         store.customers.forEach(customer => {
-          if (transactions) {
-            transactions = customer.transactions.concat(transactions);
-          } else {
-            transactions = customer.transactions;
-          }
+          customer.transactions.forEach(transaction => {
+            let localTransaction = JSON.parse(JSON.stringify(transaction));
+            localTransaction.store_name = store.store_name;
+            transactions.push(localTransaction);
+          });
         });
       });
     });
@@ -417,6 +417,112 @@ exports.findOne = async (req, res) => {
         data: {
           statusCode: 404,
           message: "User not found"
+        }
+      });
+    }
+
+    const store = user.stores.find(store => store._id == req.params.store_id);
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: "Store not found",
+        data: {
+          statusCode: 404,
+          message: "Store not found"
+        }
+      });
+    }
+
+    const customer = store.customers.find(
+      customer => customer._id == req.params.customer_id
+    );
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+        data: {
+          statusCode: 404,
+          message: "Customer not found"
+        }
+      });
+    }
+
+    const transaction = customer.transactions.find(
+      transactions => transactions._id == req.params.transaction_id
+    );
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+        data: {
+          statusCode: 404,
+          message: "Transaction not found"
+        }
+      });
+    }
+
+    let localTransaction = JSON.parse(JSON.stringify(transaction));
+    localTransaction.store_name = store.store_name;
+
+    res.status(200).json({
+      success: true,
+      message: "Transaction",
+      data: {
+        transaction: localTransaction
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrongr",
+      data: {
+        statusCode: 500,
+        message: error
+      }
+    });
+  }
+};
+
+
+exports.findOneAdmin = async (req, res) => {
+  try {
+    const identifier = req.user.phone_number;
+    const admin = await UserModel.findOne({ identifier });
+    if (!admin || admin.local.user_role !== "super_admin") {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: {
+          statusCode: 404,
+          message: "User not found"
+        }
+      });
+    }
+
+    const user = await UserModel.findOne({
+      stores: { 
+        $elemMatch: { 
+          _id: req.params.store_id,
+          customers: { 
+            $elemMatch: {
+              _id: req.params.customer_id,
+              transactions: {
+                $elemMatch: {
+                  _id: req.params.transaction_id
+                }
+              }
+            }
+          }
+        }
+      } 
+    });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Transaction not found",
+        data: {
+          statusCode: 404,
+          message: "Transaction not found"
         }
       });
     }

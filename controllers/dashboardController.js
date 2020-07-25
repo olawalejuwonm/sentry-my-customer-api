@@ -3,27 +3,36 @@ const storeAdminModel = require("../models/store_admin");
 const storeAssistantModel = require("../models/storeAssistant");
 const storeModel = require("../models/store");
 const customerModel = require("../models/customer");
+const util = require("../util/sort_data");
 
 exports.storeAdminDashboard = async (req, res, next) => {
   const identifier = req.user.phone_number;
   const role = req.user.user_role;
 
   if (role != "store_admin") {
-    if (role == "store_assistant") {
-      var u = 1;
-    } else {
-      return next();
-    }
+    // if (role == "store_assistant") {
+    //   var u = 1;
+    // } else {
+    //   return next();
+    // }
+    res.status(401).send({
+      success: false,
+      message: 'User not authorized to access store admin dashboard',
+      error:{
+        statusCode: 401,
+        message: 'User not authorized to access store admin dashboard'
+      }
+    })
   }
 
-  const storeAdmin = await storeAdminModel.findOne({
-    $or: [
-      { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
-      {
-        "assistants.phone_number": req.user.phone_number,
-        "assistants.user_role": req.user.user_role
-      }
-    ]
+  const storeAdmin = await storeAdminModel.findOne({ identifier
+    // $or: [
+    //   { identifier: req.user.phone_number, "local.user_role": req.user.user_role },
+    //   {
+    //     "assistants.phone_number": req.user.phone_number,
+    //     "assistants.user_role": req.user.user_role
+    //   }
+    // ]
   });
   if (!storeAdmin) {
     return res.status(404).json({
@@ -50,6 +59,16 @@ exports.storeAdminDashboard = async (req, res, next) => {
     data.transactions = [];
     data.recentTransactions = [];
     data.recentDebts = [];
+    data.chart = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    data.debtCount = 0;
+    data.debtAmount = 0;
+    data.revenueCount = 0;
+    data.revenueAmount = 0;
+    data.receivablesCount = 0;
+    data.receivablesAmount = 0;
+    data.amountForCurrentMonth = 0;
+    data.amountForPreviousMonth = 0;
+    data.count = 0
 
     stores.forEach(store => {
       //increment customer count by number of customers in each store
@@ -79,8 +98,9 @@ exports.storeAdminDashboard = async (req, res, next) => {
           obj.storeName = store.store_name;
           obj.customerName = customer.name;
           //sort transactions by date
-          obj.transactions = customer.transactions.sort(compareTransactions);
+          obj.transactions = customer.transactions.sort(util.compareTransactions);
           data.transactions.push(obj);
+          
 
           const transactions = customer.transactions;
           transactions.forEach(transaction => {
@@ -91,10 +111,17 @@ exports.storeAdminDashboard = async (req, res, next) => {
             obj.transaction = transaction;
             data.recentTransactions.push(obj);
 
-            if (
-              transaction.type.toLowerCase() == "debt" &&
-              transaction.status == false
-            ) {
+            data.chart = util.getTransactionForMonth(obj, data.chart);
+
+            if (transaction.type.toLowerCase() == "debt" && transaction.status == false) {
+              //increment debt count
+              data.debtCount += 1;
+              //increment debt amount
+              try {
+                data.debtAmount += parseFloat(transaction.amount);
+              } catch (error) {
+                data.debtAmount += 0;
+              }
               //push in details of each debt
               let obj = {};
               obj.storeName = store.store_name;
@@ -102,15 +129,87 @@ exports.storeAdminDashboard = async (req, res, next) => {
               obj.debt = transaction;
               data.recentDebts.push(obj);
             }
+
+            if (transaction.type.toLowerCase() == "debt" && transaction.status == true) {
+              data.revenueCount += 1;
+              let transactionDate = new Date(transaction.createdAt)
+              //get revenue for current month
+              if (date.getMonth() == transactionDate.getMonth() && 
+                date.getFullYear() == transactionDate.getFullYear()
+              ) 
+              {
+                try {
+                  data.amountForCurrentMonth += parseFloat(transaction.amount)
+                } catch (error) {
+                  data.amountForCurrentMonth += 0
+                }
+              }
+
+              //get revenue for previous month
+              if (date.getMonth()-1 == transactionDate.getMonth() && 
+                date.getFullYear() == transactionDate.getFullYear()
+              ) {
+                try {
+                  data.amountForPreviousMonth += parseFloat(transaction.amount)
+                } catch (error) {
+                  data.amountForPreviousMonth += 0
+                }
+              }
+
+              //increment revenue amount
+              try {
+                data.revenueAmount += parseFloat(transaction.amount);
+              } catch (error) {
+                data.revenueAmount += 0;
+              } 
+            }
+
+            if (transaction.type.toLowerCase() == "paid") {
+              data.revenueCount += 1;
+              let transactionDate = new Date(transaction.createdAt);
+              //get revenue for current month
+              if (date.getMonth() == transactionDate.getMonth() ) {
+                try {
+                  data.amountForCurrentMonth += parseFloat(transaction.amount)
+                } catch (error) {
+                  data.amountForCurrentMonth += 0
+                }
+              }
+
+              //get revenue for previous month
+              if (date.getMonth()-1 == transactionDate.getMonth() ) {
+                try {
+                  data.amountForPreviousMonth += parseFloat(transaction.amount)
+                } catch (error) {
+                  data.amountForPreviousMonth += 0
+                }
+              }
+
+              try {
+                data.revenueAmount += parseFloat(transaction.amount);
+              } catch (error) {
+                data.revenueAmount += 0;
+              }
+            }
+
+            if (transaction.type.toLowerCase() == "receivables") {
+              data.receivablesCount += 1;
+              try {
+                data.receivablesAmount  += parseFloat(transaction.amount);
+              } catch (error) {
+                data.receivablesAmount += 0;
+              }
+            }
+
           });
         }
       });
     });
 
     // sort transactions and debts by date in descending order
-    data.transactions.sort(compareCustomers);
-    data.recentTransactions.sort(compareRecentTransactions);
-    data.recentDebts.sort(compareRecentDebts);
+    data.transactions.sort(util.compareCustomers);
+    data.recentTransactions = data.recentTransactions.sort(util.compareRecentTransactions).slice(0,15);
+    data.recentDebts= data.recentDebts.sort(util.compareRecentDebts).slice(0,15);
 
     return res.status(200).json({
       success: true,
@@ -123,7 +222,7 @@ exports.storeAdminDashboard = async (req, res, next) => {
       message: "Internal server error",
       error: {
         statusCode: 500,
-        message: error
+        message: error.message
       }
     });
   }
@@ -208,7 +307,7 @@ exports.storeAssistantDashboard = async (req, res) => {
   ]);
 
   
-  if (!storeAdmin) {
+  if (storeAdmin.length == 0) {
     return res.status(404).json({
       success: false,
       message: "Store Admin not found",
@@ -221,9 +320,7 @@ exports.storeAssistantDashboard = async (req, res) => {
   try {
     storeAdmin = storeAdmin[0];
     const assistant = storeAdmin.assistants;
-    data.name = assistant.name;
-    data.email = assistant.email;
-    data.phone_number = assistant.phone_number;
+    data.user = assistant;
     
     const store_id = assistant.store_id;
     if (!store_id) {
@@ -241,13 +338,16 @@ exports.storeAssistantDashboard = async (req, res) => {
     data.storeAddress = assistantStore.shop_address
     data.customerCount = 0; 
     data.transactionCount = 0;
-    data.recentTransactions =[]
+    data.recentTransactions =[];
+    data.chart = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     data.debtCount = 0;
     data.debtAmount = 0;
     data.revenueCount = 0;
     data.revenueAmount = 0;
     data.receivablesCount = 0;
     data.receivablesAmount = 0;
+    data.amountForCurrentMonth = 0;
+    data.amountForPreviousMonth = 0;
     assistantStore.customers.forEach(customer => {
       data.customerCount += 1;
       customer.transactions.forEach(transaction => {
@@ -260,27 +360,82 @@ exports.storeAssistantDashboard = async (req, res) => {
           obj.transaction = transaction;
           data.recentTransactions.push(obj);
 
-          if (transaction.type.toLowerCase() == 'debt') {
+          data.chart = util.getTransactionForMonth(obj, data.chart);
+
+          if (transaction.type.toLowerCase() == 'debt' && transaction.status == false) {
             data.debtCount += 1;
             try { data.debtAmount += parseFloat(transaction.amount); 
             } catch (error) {
               data.debtAmount += 0
             }
           }
+
           if (transaction.type.toLowerCase() == 'debt' &&  transaction.status == true) {
             data.revenueCount += 1;
             try { data.revenueAmount += parseFloat(transaction.amount); 
             } catch (error) {
               data.revenueAmount += 0
-            } 
+            }
+
+            let date = new Date();
+            let transactionDate = new Date(transaction.createdAt)
+            //get revenue for current month
+            if (date.getMonth() == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) 
+            {
+              try {
+                data.amountForCurrentMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForCurrentMonth += 0
+              }
+            }
+
+            //get revenue for previous month
+            if (date.getMonth()-1 == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) {
+              try {
+                data.amountForPreviousMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForPreviousMonth += 0
+              }
+            }
           }
+
           if (transaction.type.toLowerCase() == 'paid') {
             data.revenueCount += 1;
             try { data.revenueAmount += parseFloat(transaction.amount); 
             } catch (error) {
               data.revenueAmount += 0
             }
+
+            let date = new Date();
+            let transactionDate = new Date(transaction.createdAt)
+            //get revenue for current month
+            if (date.getMonth() == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) 
+            {
+              try {
+                data.amountForCurrentMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForCurrentMonth += 0
+              }
+            }
+
+            //get revenue for previous month
+            if (date.getMonth()-1 == transactionDate.getMonth() && 
+              date.getFullYear() == transactionDate.getFullYear()
+            ) {
+              try {
+                data.amountForPreviousMonth += parseFloat(transaction.amount)
+              } catch (error) {
+                data.amountForPreviousMonth += 0
+              }
+            }
           }
+
           if (transaction.type.toLowerCase() == 'receivables') {
             data.receivablesCount += 1;
             try { data.receivablesAmount +=  parseFloat(transaction.amount); 
@@ -292,7 +447,7 @@ exports.storeAssistantDashboard = async (req, res) => {
       })
     })
     //sort transactions by time
-    data.recentTransactions.sort(compareRecentTransactions)
+    data.recentTransactions = data.recentTransactions.sort(util.compareRecentTransactions).slice(0,15)
 
     return res.status(200).json({
       success: true,
@@ -387,45 +542,45 @@ exports.customerDashboard = async (req, res) => {
   }
 };
 
-//utility functions
-function compareTransactions(a, b) {
-  //compares two time stamps and places the earlier timestamp before the other
-  if (a.createdAt.getTime() > b.createdAt.getTime()) return -1;
-  if (b.createdAt.getTime() < a.createdAt.getTime()) return 1;
+// //utility functions
+// function compareTransactions(a, b) {
+//   //compares two time stamps and places the earlier timestamp before the other
+//   if (a.createdAt.getTime() > b.createdAt.getTime()) return -1;
+//   if (b.createdAt.getTime() < a.createdAt.getTime()) return 1;
 
-  return 0;
-}
+//   return 0;
+// }
 
-function compareCustomers(a, b) {
-  //compares two time stamps and places the earlier timestamp before the other
-  if (
-    a.transactions[0].createdAt.getTime() >
-    b.transactions[0].createdAt.getTime()
-  )
-    return -1;
-  if (
-    b.transactions[0].createdAt.getTime() <
-    a.transactions[0].createdAt.getTime()
-  )
-    return 1;
+// function compareCustomers(a, b) {
+//   //compares two time stamps and places the earlier timestamp before the other
+//   if (
+//     a.transactions[0].createdAt.getTime() >
+//     b.transactions[0].createdAt.getTime()
+//   )
+//     return -1;
+//   if (
+//     b.transactions[0].createdAt.getTime() <
+//     a.transactions[0].createdAt.getTime()
+//   )
+//     return 1;
 
-  return 0;
-}
+//   return 0;
+// }
 
-function compareRecentTransactions(a, b) {
-  //compares two time stamps and places the earlier timestamp before the other
-  if (a.transaction.createdAt.getTime() > b.transaction.createdAt.getTime())
-    return -1;
-  if (b.transaction.createdAt.getTime() < a.transaction.createdAt.getTime())
-    return 1;
+// function compareRecentTransactions(a, b) {
+//   //compares two time stamps and places the earlier timestamp before the other
+//   if (a.transaction.createdAt.getTime() > b.transaction.createdAt.getTime())
+//     return -1;
+//   if (b.transaction.createdAt.getTime() < a.transaction.createdAt.getTime())
+//     return 1;
 
-  return 0;
-}
+//   return 0;
+// }
 
-function compareRecentDebts(a, b) {
-  //compares two time stamps and places the earlier timestamp before the other
-  if (a.debt.createdAt.getTime() > b.debt.createdAt.getTime()) return -1;
-  if (b.debt.createdAt.getTime() < a.debt.createdAt.getTime()) return 1;
+// function compareRecentDebts(a, b) {
+//   //compares two time stamps and places the earlier timestamp before the other
+//   if (a.debt.createdAt.getTime() > b.debt.createdAt.getTime()) return -1;
+//   if (b.debt.createdAt.getTime() < a.debt.createdAt.getTime()) return 1;
 
-  return 0;
-}
+//   return 0;
+// }

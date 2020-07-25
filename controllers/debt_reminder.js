@@ -8,6 +8,7 @@ const Transaction = require("../models/transaction");
 const { all } = require("../routes/customer");
 const cron = require("node-cron");
 const transaction = require("../models/transaction");
+const code = require("./../util/code_random");
 const africastalking = require("africastalking")({
   apiKey: process.env.AFRICASTALKING_API_KEY,
   username: process.env.AFRICASTALKING_USERNAME
@@ -548,6 +549,69 @@ let regex = /^\+(?:[0-9] ?){6,14}[0-9]$/;
     });
 };*/
 
+exports.findAllAdmin = async (req, res) => {
+  try {
+    const identifier = req.user.phone_number;
+    const admin = await UserModel.findOne({ identifier });
+    if (!admin || admin.local.user_role !== "super_admin") {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: {
+          statusCode: 404,
+          message: "User not found"
+        }
+      });
+    }
+
+    const users = await UserModel.find();
+    if (!users) {
+      return res.status(404).json({
+        success: false,
+        message: "Users not found",
+        data: {
+          statusCode: 404,
+          message: "Users not found"
+        }
+      });
+    }
+
+    let debts = [];
+    users.forEach(user => {
+      user.stores.forEach(store => {
+        store.customers.forEach(customer => {
+          customer.transactions.forEach(transaction => {
+            if(transaction.debts && transaction.debts.length > 0) {
+              transaction.debts.forEach(debt => {
+                let localDebt = JSON.parse(JSON.stringify(debt));
+                localDebt.store_name = store.store_name;
+                debts.push(localDebt);
+              })
+            }
+          });
+        });
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Debts",
+      data: {
+        debts: debts
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: {
+        statusCode: 500,
+        message: error
+      }
+    });
+  }
+}
+
 exports.send = async (req, res) => {
   try {
     let to, store_name, amount, reminder_message;
@@ -612,6 +676,36 @@ exports.send = async (req, res) => {
       reminder_message = req.body.message;
     }
 
+    let code_generated  = null;
+    if(req.body.send_link) { 
+      while(!code_generated) {
+        code_generated = code(10, true)
+        const validate = await UserModel.findOne({
+          stores: { 
+            $elemMatch: {
+              customers: { 
+                $elemMatch: {
+                  transactions: {
+                    $elemMatch: {
+                      debts: {
+                        $elemMatch: {
+                          code: code_generated
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } 
+        });
+        if(validate) {
+          code_generated  = null;
+        }
+      }
+      reminder_message += ` customerpay.me/${code_generated}`;
+    }
+
     const reminder = {
       user_phone_number: req.user.phone_number,
       customer_phone_number: customer.phone_number,
@@ -620,7 +714,8 @@ exports.send = async (req, res) => {
       ts_ref_id: transaction._id,
       message: reminder_message,
       status: "sending",
-      expected_pay_date: Date.now()
+      expected_pay_date: Date.now(),
+      code: code_generated
     }
 
     transaction.debts.push(reminder)
