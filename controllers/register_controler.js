@@ -10,7 +10,6 @@ exports.validate = (method) => {
     case "body": {
       return [
         body("phone_number").isInt(),
-        body("phone_number").isMobilePhone(),
         body("password").isLength({ min: 6 }),
       ];
     }

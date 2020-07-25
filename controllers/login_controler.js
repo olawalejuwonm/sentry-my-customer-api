@@ -57,10 +57,10 @@ module.exports.loginUser = async (req, res, next) => {
             } else {
               res.status(401).json({
                 success: false,
-                message: "Invalid Credentials",
+                message: "Invalid credentials.",
                 error: {
                   code: 401,
-                  description: "Invalid Credentials",
+                  description: "Invalid credentials",
                 },
               });
             }
@@ -76,11 +76,11 @@ module.exports.loginUser = async (req, res, next) => {
             });
           });
       } else {
-        UserModel.findOne({
-          "assistants.phone_number": phone_number,
-        })
-          .then((user) => {
-            if (user) {
+        try {
+          UserModel.findOne({
+            "assistants.phone_number": phone_number,
+          })
+            .then((user) => {
               const storeAssistants = user.assistants;
 
               storeAssistants.forEach((storeAssistant) => {
@@ -126,10 +126,10 @@ module.exports.loginUser = async (req, res, next) => {
                           } else {
                             return res.status(401).json({
                               success: false,
-                              message: "Invalid Credentials",
+                              message: "Invalid credentials.",
                               error: {
                                 code: 401,
-                                description: "Invalid Credentials",
+                                description: "Invalid credentials",
                               },
                             });
                           }
@@ -138,28 +138,27 @@ module.exports.loginUser = async (req, res, next) => {
                   });
                 }
               });
-            } else {
-              //if the phone number doesn't exist we send this response
-              res.status(401).json({
-                success: false,
-                message: "Invalid Credentials",
+            })
+            .catch((error) => {
+              return res.status(500).json({
+                success: "false",
+                message: "Internal Server Error.",
                 error: {
-                  code: 401,
-                  description: "Invalid Credentials",
+                  statusCode: 500,
+                  message: "Internal Server Error.",
                 },
               });
-            }
-          })
-          .catch((error) => {
-            return res.status(500).json({
-              success: "false",
-              message: "Internal Server Error.",
-              error: {
-                statusCode: 500,
-                description: error,
-              },
             });
+        } catch {
+          res.status(404).json({
+            success: false,
+            message: "User does not exist",
+            error: {
+              code: 404,
+              description: "User does not exist",
+            },
           });
+        }
       }
     })
     .catch((error) => {
@@ -218,10 +217,10 @@ module.exports.loginAssistant = async (req, res, next) => {
                   } else {
                     return res.status(401).json({
                       success: false,
-                      message: "Invalid Credentials.",
+                      message: "Invalid credentials.",
                       error: {
                         code: 401,
-                        description: "Invalid Credentials",
+                        description: "Invalid credentials",
                       },
                     });
                   }
@@ -302,7 +301,7 @@ module.exports.loginCustomer = async (req, res, next) => {
         });
       } else {
         res.json({
-          message: "Invalid Credentials.",
+          message: "Invalid credentials.",
           Status: false,
         });
       }
